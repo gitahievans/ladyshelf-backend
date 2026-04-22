@@ -1,0 +1,7 @@
+django==6.0.4
+djangorestframework==3.17.1
+django-cors-headers==4.9.0
+drf-spectacular==0.29.0
+psycopg[binary]==3.3.3
+python-dotenv==1.2.2
+PyJWT[crypto]==2.12.1

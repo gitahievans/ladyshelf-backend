@@ -1,0 +1,2096 @@
+{
+  "categories": [
+    {
+      "id": "cat-001",
+      "slug": "office-formal",
+      "name": "Office & Formal",
+      "description": "Sharp tailoring meets modern elegance. Polished blouses, sleek skirts, structured trousers, and impeccably cut blazers that honour corporate dress codes while embracing a distinctly fashion-forward edge.",
+      "image": "https://icdvsrhauwfomggyswbt.supabase.co/storage/v1/object/public/wahi/1.jpg",
+      "productCount": 7
+    },
+    {
+      "id": "cat-002",
+      "slug": "casual",
+      "name": "Casual Wear",
+      "description": "Elevate your everyday style with premium tops, designer-inspired jeans, and versatile day dresses that combine all-day comfort with modern, contemporary aesthetics.",
+      "image": "https://icdvsrhauwfomggyswbt.supabase.co/storage/v1/object/public/wahi/12.jpg",
+      "productCount": 6
+    },
+    {
+      "id": "cat-003",
+      "slug": "party-evening",
+      "name": "Party & Evening",
+      "description": "Make an entrance in sophisticated cocktail dresses and statement jumpsuits perfect for celebrations, social events, and evening occasions.",
+      "image": "https://icdvsrhauwfomggyswbt.supabase.co/storage/v1/object/public/wahi/14.jpg",
+      "productCount": 6
+    },
+    {
+      "id": "cat-004",
+      "slug": "traditional-african",
+      "name": "Traditional African",
+      "description": "Celebrate the beauty of African heritage with vibrant kitenge and ankara dresses, contemporary kaftans, and thoughtfully designed fusion pieces.",
+      "image": "https://icdvsrhauwfomggyswbt.supabase.co/storage/v1/object/public/wahi/15.png",
+      "productCount": 5
+    },
+    {
+      "id": "cat-005",
+      "slug": "accessories",
+      "name": "Accessories",
+      "description": "Elevate every ensemble with our carefully curated selection of designer-inspired bags, luxurious silk scarves, and timeless jewelry pieces.",
+      "image": "https://icdvsrhauwfomggyswbt.supabase.co/storage/v1/object/public/wahi/23.jpg",
+      "productCount": 4
+    }
+  ],
+  "products": [
+    {
+      "id": "prod-001",
+      "slug": "obsidian-power-blazer",
+      "name": "Obsidian Power Blazer",
+      "brand": "Wahi Fashion",
+      "categorySlug": "office-formal",
+      "description": "A blazer that walks into the room before you say a word. Structured shoulders, a nipped waist, and a clean single-button closure engineered for presence. Cut from a premium ponte fabric that holds its shape through a ten-hour day.",
+      "images": [
+        "https://icdvsrhauwfomggyswbt.supabase.co/storage/v1/object/public/wahi/1.jpg",
+        "https://icdvsrhauwfomggyswbt.supabase.co/storage/v1/object/public/wahi/12.jpg",
+        "https://icdvsrhauwfomggyswbt.supabase.co/storage/v1/object/public/wahi/14.jpg"
+      ],
+      "variants": [
+        {
+          "id": "v-001-1",
+          "size": "S",
+          "color": "Obsidian Black",
+          "colorHex": "#1A1009",
+          "stock": 4,
+          "sku": "WF-OFW-001-S-BLK"
+        },
+        {
+          "id": "v-001-2",
+          "size": "M",
+          "color": "Obsidian Black",
+          "colorHex": "#1A1009",
+          "stock": 6,
+          "sku": "WF-OFW-001-M-BLK"
+        },
+        {
+          "id": "v-001-3",
+          "size": "L",
+          "color": "Obsidian Black",
+          "colorHex": "#1A1009",
+          "stock": 3,
+          "sku": "WF-OFW-001-L-BLK"
+        },
+        {
+          "id": "v-001-4",
+          "size": "S",
+          "color": "Warm Ivory",
+          "colorHex": "#FAF6F0",
+          "stock": 2,
+          "sku": "WF-OFW-001-S-IVY"
+        },
+        {
+          "id": "v-001-5",
+          "size": "M",
+          "color": "Warm Ivory",
+          "colorHex": "#FAF6F0",
+          "stock": 5,
+          "sku": "WF-OFW-001-M-IVY"
+        }
+      ],
+      "price": 7800,
+      "currency": "KES",
+      "badge": "bestseller",
+      "tags": [
+        "blazer",
+        "office",
+        "formal",
+        "structured",
+        "workwear"
+      ],
+      "rating": 4.8,
+      "reviewCount": 124,
+      "isFeatured": true,
+      "isNewArrival": false,
+      "material": "Premium ponte fabric, 68% polyester 28% viscose 4% elastane",
+      "careInstructions": "Dry clean recommended. Cool iron on reverse.",
+      "createdAt": "2026-01-10T08:00:00Z"
+    },
+    {
+      "id": "prod-002",
+      "slug": "mahogany-wrap-skirt",
+      "name": "Mahogany Wrap Skirt",
+      "brand": "Wahi Fashion",
+      "categorySlug": "office-formal",
+      "description": "A midi wrap skirt that moves the way ambition does \u2014 with precision and intention. The deep mahogany tone commands attention in any boardroom. Pairs effortlessly with the Obsidian Power Blazer for a complete power look.",
+      "images": [
+        "https://icdvsrhauwfomggyswbt.supabase.co/storage/v1/object/public/wahi/15.png",
+        "https://icdvsrhauwfomggyswbt.supabase.co/storage/v1/object/public/wahi/16.jpg",
+        "https://icdvsrhauwfomggyswbt.supabase.co/storage/v1/object/public/wahi/17.jpg"
+      ],
+      "variants": [
+        {
+          "id": "v-002-1",
+          "size": "XS",
+          "color": "Deep Mahogany",
+          "colorHex": "#3D1F0D",
+          "stock": 3,
+          "sku": "WF-OFW-002-XS-MAH"
+        },
+        {
+          "id": "v-002-2",
+          "size": "S",
+          "color": "Deep Mahogany",
+          "colorHex": "#3D1F0D",
+          "stock": 5,
+          "sku": "WF-OFW-002-S-MAH"
+        },
+        {
+          "id": "v-002-3",
+          "size": "M",
+          "color": "Deep Mahogany",
+          "colorHex": "#3D1F0D",
+          "stock": 7,
+          "sku": "WF-OFW-002-M-MAH"
+        },
+        {
+          "id": "v-002-4",
+          "size": "L",
+          "color": "Deep Mahogany",
+          "colorHex": "#3D1F0D",
+          "stock": 4,
+          "sku": "WF-OFW-002-L-MAH"
+        },
+        {
+          "id": "v-002-5",
+          "size": "S",
+          "color": "Midnight Navy",
+          "colorHex": "#1B2A4A",
+          "stock": 2,
+          "sku": "WF-OFW-002-S-NVY"
+        },
+        {
+          "id": "v-002-6",
+          "size": "M",
+          "color": "Midnight Navy",
+          "colorHex": "#1B2A4A",
+          "stock": 4,
+          "sku": "WF-OFW-002-M-NVY"
+        }
+      ],
+      "price": 4200,
+      "currency": "KES",
+      "badge": "new",
+      "tags": [
+        "skirt",
+        "midi",
+        "office",
+        "formal",
+        "wrap"
+      ],
+      "rating": 4.6,
+      "reviewCount": 87,
+      "isFeatured": true,
+      "isNewArrival": true,
+      "material": "Crepe georgette, 100% polyester",
+      "careInstructions": "Hand wash cold. Do not tumble dry.",
+      "createdAt": "2026-02-14T08:00:00Z"
+    },
+    {
+      "id": "prod-003",
+      "slug": "gold-thread-blouse",
+      "name": "Gold Thread Blouse",
+      "brand": "Wahi Fashion",
+      "categorySlug": "office-formal",
+      "description": "A silk-touch blouse with subtle gold thread weave that catches the light at every turn. Professional enough for the boardroom, striking enough to be remembered. The V-neckline and relaxed tuck-in silhouette flatter every body type.",
+      "images": [
+        "https://icdvsrhauwfomggyswbt.supabase.co/storage/v1/object/public/wahi/18.jpg",
+        "https://icdvsrhauwfomggyswbt.supabase.co/storage/v1/object/public/wahi/19.jpg",
+        "https://icdvsrhauwfomggyswbt.supabase.co/storage/v1/object/public/wahi/2.jpg"
+      ],
+      "variants": [
+        {
+          "id": "v-003-1",
+          "size": "XS",
+          "color": "Champagne Gold",
+          "colorHex": "#D4A853",
+          "stock": 4,
+          "sku": "WF-OFW-003-XS-GLD"
+        },
+        {
+          "id": "v-003-2",
+          "size": "S",
+          "color": "Champagne Gold",
+          "colorHex": "#D4A853",
+          "stock": 6,
+          "sku": "WF-OFW-003-S-GLD"
+        },
+        {
+          "id": "v-003-3",
+          "size": "M",
+          "color": "Champagne Gold",
+          "colorHex": "#D4A853",
+          "stock": 5,
+          "sku": "WF-OFW-003-M-GLD"
+        },
+        {
+          "id": "v-003-4",
+          "size": "L",
+          "color": "Champagne Gold",
+          "colorHex": "#D4A853",
+          "stock": 2,
+          "sku": "WF-OFW-003-L-GLD"
+        },
+        {
+          "id": "v-003-5",
+          "size": "S",
+          "color": "Pearl White",
+          "colorHex": "#F5F0E8",
+          "stock": 3,
+          "sku": "WF-OFW-003-S-WHT"
+        },
+        {
+          "id": "v-003-6",
+          "size": "M",
+          "color": "Pearl White",
+          "colorHex": "#F5F0E8",
+          "stock": 4,
+          "sku": "WF-OFW-003-M-WHT"
+        }
+      ],
+      "price": 3600,
+      "originalPrice": 4500,
+      "currency": "KES",
+      "badge": "sale",
+      "tags": [
+        "blouse",
+        "office",
+        "silk",
+        "gold",
+        "formal"
+      ],
+      "rating": 4.7,
+      "reviewCount": 203,
+      "isFeatured": true,
+      "isNewArrival": false,
+      "material": "Silk-touch polyester, 95% polyester 5% elastane",
+      "careInstructions": "Machine wash delicate cycle 30\u00b0C. Hang dry.",
+      "createdAt": "2025-11-20T08:00:00Z"
+    },
+    {
+      "id": "prod-004",
+      "slug": "structured-sand-trousers",
+      "name": "Structured Sand Trousers",
+      "brand": "Wahi Fashion",
+      "categorySlug": "office-formal",
+      "description": "Wide-leg tailored trousers in a warm sand tone that holds its line from the 8am meeting to the evening send-off. A high-rise waist and pressed creases create an elongating silhouette that commands the room.",
+      "images": [
+        "https://icdvsrhauwfomggyswbt.supabase.co/storage/v1/object/public/wahi/20.jpg",
+        "https://icdvsrhauwfomggyswbt.supabase.co/storage/v1/object/public/wahi/23.jpg",
+        "https://icdvsrhauwfomggyswbt.supabase.co/storage/v1/object/public/wahi/25.jpg"
+      ],
+      "variants": [
+        {
+          "id": "v-004-1",
+          "size": "XS",
+          "color": "Warm Sand",
+          "colorHex": "#C9A87C",
+          "stock": 2,
+          "sku": "WF-OFW-004-XS-SND"
+        },
+        {
+          "id": "v-004-2",
+          "size": "S",
+          "color": "Warm Sand",
+          "colorHex": "#C9A87C",
+          "stock": 5,
+          "sku": "WF-OFW-004-S-SND"
+        },
+        {
+          "id": "v-004-3",
+          "size": "M",
+          "color": "Warm Sand",
+          "colorHex": "#C9A87C",
+          "stock": 6,
+          "sku": "WF-OFW-004-M-SND"
+        },
+        {
+          "id": "v-004-4",
+          "size": "L",
+          "color": "Warm Sand",
+          "colorHex": "#C9A87C",
+          "stock": 3,
+          "sku": "WF-OFW-004-L-SND"
+        },
+        {
+          "id": "v-004-5",
+          "size": "XL",
+          "color": "Warm Sand",
+          "colorHex": "#C9A87C",
+          "stock": 1,
+          "sku": "WF-OFW-004-XL-SND"
+        },
+        {
+          "id": "v-004-6",
+          "size": "M",
+          "color": "Obsidian Black",
+          "colorHex": "#1A1009",
+          "stock": 4,
+          "sku": "WF-OFW-004-M-BLK"
+        },
+        {
+          "id": "v-004-7",
+          "size": "L",
+          "color": "Obsidian Black",
+          "colorHex": "#1A1009",
+          "stock": 3,
+          "sku": "WF-OFW-004-L-BLK"
+        }
+      ],
+      "price": 5200,
+      "currency": "KES",
+      "tags": [
+        "trousers",
+        "wide-leg",
+        "office",
+        "formal",
+        "tailored"
+      ],
+      "rating": 4.5,
+      "reviewCount": 91,
+      "isFeatured": false,
+      "isNewArrival": false,
+      "material": "Premium suiting fabric, 72% polyester 24% viscose 4% elastane",
+      "careInstructions": "Dry clean only. Steam to remove creases.",
+      "createdAt": "2025-10-05T08:00:00Z"
+    },
+    {
+      "id": "prod-005",
+      "slug": "ivory-pencil-dress",
+      "name": "Ivory Pencil Dress",
+      "brand": "Wahi Fashion",
+      "categorySlug": "office-formal",
+      "description": "A sleeveless knee-length pencil dress that transitions from board meeting to after-work drinks without a second thought. The subtle back slit offers ease of movement without compromising the clean silhouette.",
+      "images": [
+        "https://icdvsrhauwfomggyswbt.supabase.co/storage/v1/object/public/wahi/27.jpg",
+        "https://icdvsrhauwfomggyswbt.supabase.co/storage/v1/object/public/wahi/28.png",
+        "https://icdvsrhauwfomggyswbt.supabase.co/storage/v1/object/public/wahi/29.jpg"
+      ],
+      "variants": [
+        {
+          "id": "v-005-1",
+          "size": "XS",
+          "color": "Warm Ivory",
+          "colorHex": "#FAF6F0",
+          "stock": 3,
+          "sku": "WF-OFW-005-XS-IVY"
+        },
+        {
+          "id": "v-005-2",
+          "size": "S",
+          "color": "Warm Ivory",
+          "colorHex": "#FAF6F0",
+          "stock": 5,
+          "sku": "WF-OFW-005-S-IVY"
+        },
+        {
+          "id": "v-005-3",
+          "size": "M",
+          "color": "Warm Ivory",
+          "colorHex": "#FAF6F0",
+          "stock": 4,
+          "sku": "WF-OFW-005-M-IVY"
+        },
+        {
+          "id": "v-005-4",
+          "size": "L",
+          "color": "Warm Ivory",
+          "colorHex": "#FAF6F0",
+          "stock": 2,
+          "sku": "WF-OFW-005-L-IVY"
+        },
+        {
+          "id": "v-005-5",
+          "size": "S",
+          "color": "Bark Brown",
+          "colorHex": "#7A4522",
+          "stock": 4,
+          "sku": "WF-OFW-005-S-BRK"
+        },
+        {
+          "id": "v-005-6",
+          "size": "M",
+          "color": "Bark Brown",
+          "colorHex": "#7A4522",
+          "stock": 3,
+          "sku": "WF-OFW-005-M-BRK"
+        }
+      ],
+      "price": 4800,
+      "currency": "KES",
+      "badge": "new",
+      "tags": [
+        "dress",
+        "pencil",
+        "office",
+        "knee-length",
+        "sleeveless"
+      ],
+      "rating": 4.4,
+      "reviewCount": 56,
+      "isFeatured": false,
+      "isNewArrival": true,
+      "material": "Scuba crepe, 82% polyester 18% elastane",
+      "careInstructions": "Machine wash cold gentle cycle. Lay flat to dry.",
+      "createdAt": "2026-03-01T08:00:00Z"
+    },
+    {
+      "id": "prod-006",
+      "slug": "bark-button-down-shirt",
+      "name": "Bark Button-Down Shirt",
+      "brand": "Wahi Fashion",
+      "categorySlug": "office-formal",
+      "description": "A relaxed-fit button-down in our signature bark tone. Slightly oversized for that effortless tuck-in or leave-out styling. The curved hem and subtle texture make it the most versatile piece in your work wardrobe.",
+      "images": [
+        "https://icdvsrhauwfomggyswbt.supabase.co/storage/v1/object/public/wahi/3.jpg",
+        "https://icdvsrhauwfomggyswbt.supabase.co/storage/v1/object/public/wahi/30.jpg",
+        "https://icdvsrhauwfomggyswbt.supabase.co/storage/v1/object/public/wahi/31.jpg"
+      ],
+      "variants": [
+        {
+          "id": "v-006-1",
+          "size": "S",
+          "color": "Bark Brown",
+          "colorHex": "#7A4522",
+          "stock": 6,
+          "sku": "WF-OFW-006-S-BRK"
+        },
+        {
+          "id": "v-006-2",
+          "size": "M",
+          "color": "Bark Brown",
+          "colorHex": "#7A4522",
+          "stock": 8,
+          "sku": "WF-OFW-006-M-BRK"
+        },
+        {
+          "id": "v-006-3",
+          "size": "L",
+          "color": "Bark Brown",
+          "colorHex": "#7A4522",
+          "stock": 5,
+          "sku": "WF-OFW-006-L-BRK"
+        },
+        {
+          "id": "v-006-4",
+          "size": "XL",
+          "color": "Bark Brown",
+          "colorHex": "#7A4522",
+          "stock": 2,
+          "sku": "WF-OFW-006-XL-BRK"
+        },
+        {
+          "id": "v-006-5",
+          "size": "S",
+          "color": "Obsidian Black",
+          "colorHex": "#1A1009",
+          "stock": 4,
+          "sku": "WF-OFW-006-S-BLK"
+        },
+        {
+          "id": "v-006-6",
+          "size": "M",
+          "color": "Obsidian Black",
+          "colorHex": "#1A1009",
+          "stock": 5,
+          "sku": "WF-OFW-006-M-BLK"
+        }
+      ],
+      "price": 3200,
+      "currency": "KES",
+      "tags": [
+        "shirt",
+        "button-down",
+        "office",
+        "casual",
+        "versatile"
+      ],
+      "rating": 4.3,
+      "reviewCount": 74,
+      "isFeatured": false,
+      "isNewArrival": false,
+      "material": "Cotton-blend, 60% cotton 40% polyester",
+      "careInstructions": "Machine wash warm. Tumble dry low. Iron as needed.",
+      "createdAt": "2025-09-15T08:00:00Z"
+    },
+    {
+      "id": "prod-007",
+      "slug": "pinstripe-coord-set",
+      "name": "Pinstripe Co-ord Set",
+      "brand": "Wahi Fashion",
+      "categorySlug": "office-formal",
+      "description": "A matching blazer and straight-leg trouser set in a fine ivory pinstripe. Wear together for a complete power look or style separately to double your wardrobe options. This is investment dressing at its finest.",
+      "images": [
+        "https://icdvsrhauwfomggyswbt.supabase.co/storage/v1/object/public/wahi/32.jpg",
+        "https://icdvsrhauwfomggyswbt.supabase.co/storage/v1/object/public/wahi/34.jpg",
+        "https://icdvsrhauwfomggyswbt.supabase.co/storage/v1/object/public/wahi/35.jpg"
+      ],
+      "variants": [
+        {
+          "id": "v-007-1",
+          "size": "XS",
+          "color": "Ivory Pinstripe",
+          "colorHex": "#F2EAD8",
+          "stock": 1,
+          "sku": "WF-OFW-007-XS-IPS"
+        },
+        {
+          "id": "v-007-2",
+          "size": "S",
+          "color": "Ivory Pinstripe",
+          "colorHex": "#F2EAD8",
+          "stock": 3,
+          "sku": "WF-OFW-007-S-IPS"
+        },
+        {
+          "id": "v-007-3",
+          "size": "M",
+          "color": "Ivory Pinstripe",
+          "colorHex": "#F2EAD8",
+          "stock": 4,
+          "sku": "WF-OFW-007-M-IPS"
+        },
+        {
+          "id": "v-007-4",
+          "size": "L",
+          "color": "Ivory Pinstripe",
+          "colorHex": "#F2EAD8",
+          "stock": 2,
+          "sku": "WF-OFW-007-L-IPS"
+        }
+      ],
+      "price": 11500,
+      "originalPrice": 13800,
+      "currency": "KES",
+      "badge": "limited",
+      "tags": [
+        "coord-set",
+        "blazer",
+        "trousers",
+        "pinstripe",
+        "office",
+        "luxury"
+      ],
+      "rating": 4.9,
+      "reviewCount": 42,
+      "isFeatured": true,
+      "isNewArrival": false,
+      "material": "Premium suiting wool-blend, 55% wool 40% polyester 5% elastane",
+      "careInstructions": "Dry clean only.",
+      "createdAt": "2025-12-01T08:00:00Z"
+    },
+    {
+      "id": "prod-008",
+      "slug": "sundown-linen-dress",
+      "name": "Sundown Linen Dress",
+      "brand": "Wahi Fashion",
+      "categorySlug": "casual",
+      "description": "A breezy midi linen dress in sun-kissed terracotta that belongs on every rooftop, brunch, and Saturday morning. The relaxed A-line silhouette and adjustable tie waist make it as comfortable as it is effortlessly stylish.",
+      "images": [
+        "https://icdvsrhauwfomggyswbt.supabase.co/storage/v1/object/public/wahi/36.jpg",
+        "https://icdvsrhauwfomggyswbt.supabase.co/storage/v1/object/public/wahi/4.png",
+        "https://icdvsrhauwfomggyswbt.supabase.co/storage/v1/object/public/wahi/40.jpg"
+      ],
+      "variants": [
+        {
+          "id": "v-008-1",
+          "size": "XS",
+          "color": "Terracotta",
+          "colorHex": "#C1440E",
+          "stock": 4,
+          "sku": "WF-CSW-008-XS-TRR"
+        },
+        {
+          "id": "v-008-2",
+          "size": "S",
+          "color": "Terracotta",
+          "colorHex": "#C1440E",
+          "stock": 6,
+          "sku": "WF-CSW-008-S-TRR"
+        },
+        {
+          "id": "v-008-3",
+          "size": "M",
+          "color": "Terracotta",
+          "colorHex": "#C1440E",
+          "stock": 5,
+          "sku": "WF-CSW-008-M-TRR"
+        },
+        {
+          "id": "v-008-4",
+          "size": "L",
+          "color": "Terracotta",
+          "colorHex": "#C1440E",
+          "stock": 3,
+          "sku": "WF-CSW-008-L-TRR"
+        },
+        {
+          "id": "v-008-5",
+          "size": "S",
+          "color": "Sage Green",
+          "colorHex": "#87A878",
+          "stock": 4,
+          "sku": "WF-CSW-008-S-SGR"
+        },
+        {
+          "id": "v-008-6",
+          "size": "M",
+          "color": "Sage Green",
+          "colorHex": "#87A878",
+          "stock": 3,
+          "sku": "WF-CSW-008-M-SGR"
+        }
+      ],
+      "price": 3800,
+      "currency": "KES",
+      "badge": "new",
+      "tags": [
+        "dress",
+        "linen",
+        "casual",
+        "midi",
+        "brunch",
+        "summer"
+      ],
+      "rating": 4.6,
+      "reviewCount": 98,
+      "isFeatured": true,
+      "isNewArrival": true,
+      "material": "100% linen",
+      "careInstructions": "Machine wash cold. Tumble dry low. Iron damp for best results.",
+      "createdAt": "2026-03-10T08:00:00Z"
+    },
+    {
+      "id": "prod-009",
+      "slug": "wide-leg-denim-set",
+      "name": "Wide Leg Denim Set",
+      "brand": "Wahi Fashion",
+      "categorySlug": "casual",
+      "description": "A coordinated denim set that elevates the everyday. The cropped off-shoulder top and wide-leg trouser work as a matching set or styled separately. Premium stretch denim with just the right amount of structure.",
+      "images": [
+        "https://icdvsrhauwfomggyswbt.supabase.co/storage/v1/object/public/wahi/42.jpg",
+        "https://icdvsrhauwfomggyswbt.supabase.co/storage/v1/object/public/wahi/1.jpg",
+        "https://icdvsrhauwfomggyswbt.supabase.co/storage/v1/object/public/wahi/12.jpg"
+      ],
+      "variants": [
+        {
+          "id": "v-009-1",
+          "size": "XS",
+          "color": "Classic Blue",
+          "colorHex": "#3B5998",
+          "stock": 3,
+          "sku": "WF-CSW-009-XS-BLU"
+        },
+        {
+          "id": "v-009-2",
+          "size": "S",
+          "color": "Classic Blue",
+          "colorHex": "#3B5998",
+          "stock": 5,
+          "sku": "WF-CSW-009-S-BLU"
+        },
+        {
+          "id": "v-009-3",
+          "size": "M",
+          "color": "Classic Blue",
+          "colorHex": "#3B5998",
+          "stock": 4,
+          "sku": "WF-CSW-009-M-BLU"
+        },
+        {
+          "id": "v-009-4",
+          "size": "L",
+          "color": "Classic Blue",
+          "colorHex": "#3B5998",
+          "stock": 2,
+          "sku": "WF-CSW-009-L-BLU"
+        },
+        {
+          "id": "v-009-5",
+          "size": "S",
+          "color": "Washed Black",
+          "colorHex": "#2C2C2C",
+          "stock": 4,
+          "sku": "WF-CSW-009-S-WBK"
+        },
+        {
+          "id": "v-009-6",
+          "size": "M",
+          "color": "Washed Black",
+          "colorHex": "#2C2C2C",
+          "stock": 3,
+          "sku": "WF-CSW-009-M-WBK"
+        }
+      ],
+      "price": 5500,
+      "currency": "KES",
+      "badge": "bestseller",
+      "tags": [
+        "denim",
+        "coord-set",
+        "casual",
+        "jeans",
+        "off-shoulder"
+      ],
+      "rating": 4.7,
+      "reviewCount": 167,
+      "isFeatured": true,
+      "isNewArrival": false,
+      "material": "Stretch denim, 98% cotton 2% elastane",
+      "careInstructions": "Machine wash cold inside out. Air dry to preserve colour.",
+      "createdAt": "2025-08-20T08:00:00Z"
+    },
+    {
+      "id": "prod-010",
+      "slug": "cream-oversized-tee",
+      "name": "Cream Oversized Tee",
+      "brand": "Wahi Fashion",
+      "categorySlug": "casual",
+      "description": "The foundation of every great casual wardrobe. A premium heavyweight oversized tee in warm cream with a clean, unfussy silhouette. Tuck it, knot it, or let it fall \u2014 it works every way.",
+      "images": [
+        "https://icdvsrhauwfomggyswbt.supabase.co/storage/v1/object/public/wahi/14.jpg",
+        "https://icdvsrhauwfomggyswbt.supabase.co/storage/v1/object/public/wahi/15.png",
+        "https://icdvsrhauwfomggyswbt.supabase.co/storage/v1/object/public/wahi/16.jpg"
+      ],
+      "variants": [
+        {
+          "id": "v-010-1",
+          "size": "XS",
+          "color": "Warm Cream",
+          "colorHex": "#F2EAD8",
+          "stock": 8,
+          "sku": "WF-CSW-010-XS-CRM"
+        },
+        {
+          "id": "v-010-2",
+          "size": "S",
+          "color": "Warm Cream",
+          "colorHex": "#F2EAD8",
+          "stock": 10,
+          "sku": "WF-CSW-010-S-CRM"
+        },
+        {
+          "id": "v-010-3",
+          "size": "M",
+          "color": "Warm Cream",
+          "colorHex": "#F2EAD8",
+          "stock": 9,
+          "sku": "WF-CSW-010-M-CRM"
+        },
+        {
+          "id": "v-010-4",
+          "size": "L",
+          "color": "Warm Cream",
+          "colorHex": "#F2EAD8",
+          "stock": 6,
+          "sku": "WF-CSW-010-L-CRM"
+        },
+        {
+          "id": "v-010-5",
+          "size": "XL",
+          "color": "Warm Cream",
+          "colorHex": "#F2EAD8",
+          "stock": 4,
+          "sku": "WF-CSW-010-XL-CRM"
+        },
+        {
+          "id": "v-010-6",
+          "size": "S",
+          "color": "Obsidian Black",
+          "colorHex": "#1A1009",
+          "stock": 7,
+          "sku": "WF-CSW-010-S-BLK"
+        },
+        {
+          "id": "v-010-7",
+          "size": "M",
+          "color": "Obsidian Black",
+          "colorHex": "#1A1009",
+          "stock": 8,
+          "sku": "WF-CSW-010-M-BLK"
+        }
+      ],
+      "price": 1800,
+      "currency": "KES",
+      "tags": [
+        "tee",
+        "oversized",
+        "casual",
+        "basics",
+        "everyday"
+      ],
+      "rating": 4.4,
+      "reviewCount": 312,
+      "isFeatured": false,
+      "isNewArrival": false,
+      "material": "100% premium combed cotton, 220gsm",
+      "careInstructions": "Machine wash warm. Tumble dry medium.",
+      "createdAt": "2025-07-01T08:00:00Z"
+    },
+    {
+      "id": "prod-011",
+      "slug": "rust-cargo-pants",
+      "name": "Rust Cargo Pants",
+      "brand": "Wahi Fashion",
+      "categorySlug": "casual",
+      "description": "Utility meets luxury in these tapered cargo pants. The warm rust tone and clean pocket placement give you that designer-street edge without looking like you tried too hard. High waist, tapered leg, effortless confidence.",
+      "images": [
+        "https://icdvsrhauwfomggyswbt.supabase.co/storage/v1/object/public/wahi/17.jpg",
+        "https://icdvsrhauwfomggyswbt.supabase.co/storage/v1/object/public/wahi/18.jpg",
+        "https://icdvsrhauwfomggyswbt.supabase.co/storage/v1/object/public/wahi/19.jpg"
+      ],
+      "variants": [
+        {
+          "id": "v-011-1",
+          "size": "XS",
+          "color": "Burnt Rust",
+          "colorHex": "#8B3A1C",
+          "stock": 2,
+          "sku": "WF-CSW-011-XS-RST"
+        },
+        {
+          "id": "v-011-2",
+          "size": "S",
+          "color": "Burnt Rust",
+          "colorHex": "#8B3A1C",
+          "stock": 4,
+          "sku": "WF-CSW-011-S-RST"
+        },
+        {
+          "id": "v-011-3",
+          "size": "M",
+          "color": "Burnt Rust",
+          "colorHex": "#8B3A1C",
+          "stock": 5,
+          "sku": "WF-CSW-011-M-RST"
+        },
+        {
+          "id": "v-011-4",
+          "size": "L",
+          "color": "Burnt Rust",
+          "colorHex": "#8B3A1C",
+          "stock": 3,
+          "sku": "WF-CSW-011-L-RST"
+        },
+        {
+          "id": "v-011-5",
+          "size": "M",
+          "color": "Olive Green",
+          "colorHex": "#4A5240",
+          "stock": 4,
+          "sku": "WF-CSW-011-M-OLV"
+        },
+        {
+          "id": "v-011-6",
+          "size": "L",
+          "color": "Olive Green",
+          "colorHex": "#4A5240",
+          "stock": 2,
+          "sku": "WF-CSW-011-L-OLV"
+        }
+      ],
+      "price": 4200,
+      "currency": "KES",
+      "badge": "new",
+      "tags": [
+        "cargo",
+        "pants",
+        "casual",
+        "streetwear",
+        "utility"
+      ],
+      "rating": 4.5,
+      "reviewCount": 63,
+      "isFeatured": false,
+      "isNewArrival": true,
+      "material": "Cotton twill, 100% cotton",
+      "careInstructions": "Machine wash cold. Air dry.",
+      "createdAt": "2026-03-20T08:00:00Z"
+    },
+    {
+      "id": "prod-012",
+      "slug": "kaftan-day-dress",
+      "name": "Kaftan Day Dress",
+      "brand": "Wahi Fashion",
+      "categorySlug": "casual",
+      "description": "A contemporary kaftan that bridges heritage and modernity. Lightweight printed fabric, an easy drop silhouette, and vibrant African-inspired print make this the most effortless piece you will reach for on any given weekend.",
+      "images": [
+        "https://icdvsrhauwfomggyswbt.supabase.co/storage/v1/object/public/wahi/2.jpg",
+        "https://icdvsrhauwfomggyswbt.supabase.co/storage/v1/object/public/wahi/20.jpg",
+        "https://icdvsrhauwfomggyswbt.supabase.co/storage/v1/object/public/wahi/23.jpg"
+      ],
+      "variants": [
+        {
+          "id": "v-012-1",
+          "size": "S",
+          "color": "Sunset Print",
+          "colorHex": "#D4691E",
+          "stock": 5,
+          "sku": "WF-CSW-012-S-SUN"
+        },
+        {
+          "id": "v-012-2",
+          "size": "M",
+          "color": "Sunset Print",
+          "colorHex": "#D4691E",
+          "stock": 6,
+          "sku": "WF-CSW-012-M-SUN"
+        },
+        {
+          "id": "v-012-3",
+          "size": "L",
+          "color": "Sunset Print",
+          "colorHex": "#D4691E",
+          "stock": 4,
+          "sku": "WF-CSW-012-L-SUN"
+        },
+        {
+          "id": "v-012-4",
+          "size": "XL",
+          "color": "Sunset Print",
+          "colorHex": "#D4691E",
+          "stock": 2,
+          "sku": "WF-CSW-012-XL-SUN"
+        },
+        {
+          "id": "v-012-5",
+          "size": "One Size",
+          "color": "Indigo Bloom",
+          "colorHex": "#3D3580",
+          "stock": 4,
+          "sku": "WF-CSW-012-OS-IDB"
+        }
+      ],
+      "price": 3200,
+      "originalPrice": 3800,
+      "currency": "KES",
+      "badge": "sale",
+      "tags": [
+        "kaftan",
+        "dress",
+        "casual",
+        "african-print",
+        "weekend"
+      ],
+      "rating": 4.8,
+      "reviewCount": 145,
+      "isFeatured": true,
+      "isNewArrival": false,
+      "material": "Rayon, 100% viscose",
+      "careInstructions": "Hand wash cold or delicate cycle. Hang dry.",
+      "createdAt": "2025-06-15T08:00:00Z"
+    },
+    {
+      "id": "prod-013",
+      "slug": "satin-slip-skirt",
+      "name": "Satin Slip Skirt",
+      "brand": "Wahi Fashion",
+      "categorySlug": "casual",
+      "description": "A bias-cut midi satin slip skirt that takes you from casual coffee to candlelit dinner. The fluid drape and soft sheen catch the light in the most flattering way. Style with an oversized tee for day or a tucked blouse for evening.",
+      "images": [
+        "https://icdvsrhauwfomggyswbt.supabase.co/storage/v1/object/public/wahi/25.jpg",
+        "https://icdvsrhauwfomggyswbt.supabase.co/storage/v1/object/public/wahi/27.jpg",
+        "https://icdvsrhauwfomggyswbt.supabase.co/storage/v1/object/public/wahi/28.png"
+      ],
+      "variants": [
+        {
+          "id": "v-013-1",
+          "size": "XS",
+          "color": "Champagne Gold",
+          "colorHex": "#D4A853",
+          "stock": 3,
+          "sku": "WF-CSW-013-XS-CHG"
+        },
+        {
+          "id": "v-013-2",
+          "size": "S",
+          "color": "Champagne Gold",
+          "colorHex": "#D4A853",
+          "stock": 4,
+          "sku": "WF-CSW-013-S-CHG"
+        },
+        {
+          "id": "v-013-3",
+          "size": "M",
+          "color": "Champagne Gold",
+          "colorHex": "#D4A853",
+          "stock": 3,
+          "sku": "WF-CSW-013-M-CHG"
+        },
+        {
+          "id": "v-013-4",
+          "size": "S",
+          "color": "Dusty Rose",
+          "colorHex": "#C5939A",
+          "stock": 5,
+          "sku": "WF-CSW-013-S-RSE"
+        },
+        {
+          "id": "v-013-5",
+          "size": "M",
+          "color": "Dusty Rose",
+          "colorHex": "#C5939A",
+          "stock": 4,
+          "sku": "WF-CSW-013-M-RSE"
+        },
+        {
+          "id": "v-013-6",
+          "size": "L",
+          "color": "Dusty Rose",
+          "colorHex": "#C5939A",
+          "stock": 2,
+          "sku": "WF-CSW-013-L-RSE"
+        }
+      ],
+      "price": 3500,
+      "currency": "KES",
+      "tags": [
+        "skirt",
+        "satin",
+        "slip",
+        "midi",
+        "casual",
+        "evening"
+      ],
+      "rating": 4.6,
+      "reviewCount": 89,
+      "isFeatured": false,
+      "isNewArrival": false,
+      "material": "Satin-finish polyester, 95% polyester 5% elastane",
+      "careInstructions": "Hand wash cold. Do not wring. Hang dry.",
+      "createdAt": "2025-10-22T08:00:00Z"
+    },
+    {
+      "id": "prod-014",
+      "slug": "midnight-gown",
+      "name": "Midnight Gown",
+      "brand": "Wahi Fashion",
+      "categorySlug": "party-evening",
+      "description": "A floor-length gown in deep obsidian with a dramatic cowl neckline and open back. This is the dress that makes the rest of the room go quiet. Fluid crepe construction that moves with the grace of every step you take.",
+      "images": [
+        "https://icdvsrhauwfomggyswbt.supabase.co/storage/v1/object/public/wahi/29.jpg",
+        "https://icdvsrhauwfomggyswbt.supabase.co/storage/v1/object/public/wahi/3.jpg",
+        "https://icdvsrhauwfomggyswbt.supabase.co/storage/v1/object/public/wahi/30.jpg"
+      ],
+      "variants": [
+        {
+          "id": "v-014-1",
+          "size": "XS",
+          "color": "Obsidian Black",
+          "colorHex": "#1A1009",
+          "stock": 2,
+          "sku": "WF-PEW-014-XS-BLK"
+        },
+        {
+          "id": "v-014-2",
+          "size": "S",
+          "color": "Obsidian Black",
+          "colorHex": "#1A1009",
+          "stock": 3,
+          "sku": "WF-PEW-014-S-BLK"
+        },
+        {
+          "id": "v-014-3",
+          "size": "M",
+          "color": "Obsidian Black",
+          "colorHex": "#1A1009",
+          "stock": 4,
+          "sku": "WF-PEW-014-M-BLK"
+        },
+        {
+          "id": "v-014-4",
+          "size": "L",
+          "color": "Obsidian Black",
+          "colorHex": "#1A1009",
+          "stock": 2,
+          "sku": "WF-PEW-014-L-BLK"
+        }
+      ],
+      "price": 9800,
+      "currency": "KES",
+      "badge": "bestseller",
+      "tags": [
+        "gown",
+        "evening",
+        "formal",
+        "cowl",
+        "floor-length",
+        "luxury"
+      ],
+      "rating": 4.9,
+      "reviewCount": 78,
+      "isFeatured": true,
+      "isNewArrival": false,
+      "material": "Fluid crepe, 95% polyester 5% elastane",
+      "careInstructions": "Dry clean only.",
+      "createdAt": "2025-11-05T08:00:00Z"
+    },
+    {
+      "id": "prod-015",
+      "slug": "gold-sequin-mini",
+      "name": "Gold Sequin Mini",
+      "brand": "Wahi Fashion",
+      "categorySlug": "party-evening",
+      "description": "Make an entrance in this fully sequined A-line mini dress that turns every light source into a spotlight. The subtle A-line cut flatters every silhouette, while the gold sequins reference our signature brand colour throughout.",
+      "images": [
+        "https://icdvsrhauwfomggyswbt.supabase.co/storage/v1/object/public/wahi/31.jpg",
+        "https://icdvsrhauwfomggyswbt.supabase.co/storage/v1/object/public/wahi/32.jpg",
+        "https://icdvsrhauwfomggyswbt.supabase.co/storage/v1/object/public/wahi/34.jpg"
+      ],
+      "variants": [
+        {
+          "id": "v-015-1",
+          "size": "XS",
+          "color": "Champagne Gold",
+          "colorHex": "#D4A853",
+          "stock": 2,
+          "sku": "WF-PEW-015-XS-GLD"
+        },
+        {
+          "id": "v-015-2",
+          "size": "S",
+          "color": "Champagne Gold",
+          "colorHex": "#D4A853",
+          "stock": 3,
+          "sku": "WF-PEW-015-S-GLD"
+        },
+        {
+          "id": "v-015-3",
+          "size": "M",
+          "color": "Champagne Gold",
+          "colorHex": "#D4A853",
+          "stock": 4,
+          "sku": "WF-PEW-015-M-GLD"
+        },
+        {
+          "id": "v-015-4",
+          "size": "L",
+          "color": "Champagne Gold",
+          "colorHex": "#D4A853",
+          "stock": 1,
+          "sku": "WF-PEW-015-L-GLD"
+        },
+        {
+          "id": "v-015-5",
+          "size": "S",
+          "color": "Midnight Silver",
+          "colorHex": "#A8A9AD",
+          "stock": 2,
+          "sku": "WF-PEW-015-S-SLV"
+        },
+        {
+          "id": "v-015-6",
+          "size": "M",
+          "color": "Midnight Silver",
+          "colorHex": "#A8A9AD",
+          "stock": 2,
+          "sku": "WF-PEW-015-M-SLV"
+        }
+      ],
+      "price": 7200,
+      "currency": "KES",
+      "badge": "limited",
+      "tags": [
+        "sequin",
+        "mini",
+        "party",
+        "evening",
+        "gold",
+        "statement"
+      ],
+      "rating": 4.8,
+      "reviewCount": 54,
+      "isFeatured": true,
+      "isNewArrival": false,
+      "material": "Sequin mesh over lining, 100% polyester",
+      "careInstructions": "Dry clean only. Store flat.",
+      "createdAt": "2025-12-10T08:00:00Z"
+    },
+    {
+      "id": "prod-016",
+      "slug": "ruched-bodycon-dress",
+      "name": "Ruched Bodycon Dress",
+      "brand": "Wahi Fashion",
+      "categorySlug": "party-evening",
+      "description": "A midi bodycon dress with strategic ruching that sculpts the silhouette and creates the most flattering drape. The deep V-neckline and thigh-high side slit add drama without sacrifice. Every celebration deserves this dress.",
+      "images": [
+        "https://icdvsrhauwfomggyswbt.supabase.co/storage/v1/object/public/wahi/35.jpg",
+        "https://icdvsrhauwfomggyswbt.supabase.co/storage/v1/object/public/wahi/36.jpg",
+        "https://icdvsrhauwfomggyswbt.supabase.co/storage/v1/object/public/wahi/4.png"
+      ],
+      "variants": [
+        {
+          "id": "v-016-1",
+          "size": "XS",
+          "color": "Burgundy",
+          "colorHex": "#6D1A2A",
+          "stock": 3,
+          "sku": "WF-PEW-016-XS-BRG"
+        },
+        {
+          "id": "v-016-2",
+          "size": "S",
+          "color": "Burgundy",
+          "colorHex": "#6D1A2A",
+          "stock": 5,
+          "sku": "WF-PEW-016-S-BRG"
+        },
+        {
+          "id": "v-016-3",
+          "size": "M",
+          "color": "Burgundy",
+          "colorHex": "#6D1A2A",
+          "stock": 4,
+          "sku": "WF-PEW-016-M-BRG"
+        },
+        {
+          "id": "v-016-4",
+          "size": "L",
+          "color": "Burgundy",
+          "colorHex": "#6D1A2A",
+          "stock": 2,
+          "sku": "WF-PEW-016-L-BRG"
+        },
+        {
+          "id": "v-016-5",
+          "size": "S",
+          "color": "Obsidian Black",
+          "colorHex": "#1A1009",
+          "stock": 4,
+          "sku": "WF-PEW-016-S-BLK"
+        },
+        {
+          "id": "v-016-6",
+          "size": "M",
+          "color": "Obsidian Black",
+          "colorHex": "#1A1009",
+          "stock": 3,
+          "sku": "WF-PEW-016-M-BLK"
+        }
+      ],
+      "price": 6500,
+      "currency": "KES",
+      "badge": "new",
+      "tags": [
+        "bodycon",
+        "ruched",
+        "midi",
+        "party",
+        "evening",
+        "slit"
+      ],
+      "rating": 4.7,
+      "reviewCount": 91,
+      "isFeatured": false,
+      "isNewArrival": true,
+      "material": "Stretch jersey, 92% polyester 8% elastane",
+      "careInstructions": "Machine wash cold gentle. Hang dry.",
+      "createdAt": "2026-02-28T08:00:00Z"
+    },
+    {
+      "id": "prod-017",
+      "slug": "velvet-statement-jumpsuit",
+      "name": "Velvet Statement Jumpsuit",
+      "brand": "Wahi Fashion",
+      "categorySlug": "party-evening",
+      "description": "A wide-leg velvet jumpsuit in deep emerald that is equal parts commanding and sensual. The deep V-neckline, cinched waist, and dramatic flare make this the centerpiece of any occasion. One piece. Infinite presence.",
+      "images": [
+        "https://icdvsrhauwfomggyswbt.supabase.co/storage/v1/object/public/wahi/40.jpg",
+        "https://icdvsrhauwfomggyswbt.supabase.co/storage/v1/object/public/wahi/42.jpg",
+        "https://icdvsrhauwfomggyswbt.supabase.co/storage/v1/object/public/wahi/1.jpg"
+      ],
+      "variants": [
+        {
+          "id": "v-017-1",
+          "size": "XS",
+          "color": "Deep Emerald",
+          "colorHex": "#1A4731",
+          "stock": 1,
+          "sku": "WF-PEW-017-XS-EMR"
+        },
+        {
+          "id": "v-017-2",
+          "size": "S",
+          "color": "Deep Emerald",
+          "colorHex": "#1A4731",
+          "stock": 3,
+          "sku": "WF-PEW-017-S-EMR"
+        },
+        {
+          "id": "v-017-3",
+          "size": "M",
+          "color": "Deep Emerald",
+          "colorHex": "#1A4731",
+          "stock": 2,
+          "sku": "WF-PEW-017-M-EMR"
+        },
+        {
+          "id": "v-017-4",
+          "size": "L",
+          "color": "Deep Emerald",
+          "colorHex": "#1A4731",
+          "stock": 1,
+          "sku": "WF-PEW-017-L-EMR"
+        },
+        {
+          "id": "v-017-5",
+          "size": "S",
+          "color": "Midnight Wine",
+          "colorHex": "#4A1525",
+          "stock": 2,
+          "sku": "WF-PEW-017-S-WIN"
+        },
+        {
+          "id": "v-017-6",
+          "size": "M",
+          "color": "Midnight Wine",
+          "colorHex": "#4A1525",
+          "stock": 2,
+          "sku": "WF-PEW-017-M-WIN"
+        }
+      ],
+      "price": 8900,
+      "originalPrice": 10500,
+      "currency": "KES",
+      "badge": "sale",
+      "tags": [
+        "jumpsuit",
+        "velvet",
+        "wide-leg",
+        "party",
+        "evening",
+        "statement"
+      ],
+      "rating": 4.9,
+      "reviewCount": 37,
+      "isFeatured": true,
+      "isNewArrival": false,
+      "material": "Stretch velvet, 88% polyester 12% elastane",
+      "careInstructions": "Dry clean only. Steam on reverse.",
+      "createdAt": "2025-12-20T08:00:00Z"
+    },
+    {
+      "id": "prod-018",
+      "slug": "cocktail-wrap-dress",
+      "name": "Cocktail Wrap Dress",
+      "brand": "Wahi Fashion",
+      "categorySlug": "party-evening",
+      "description": "A knee-length wrap dress with flutter sleeves and a deep surplice neckline that flatters every body type. The bold geometric print in terracotta and gold is a conversation starter before you even arrive.",
+      "images": [
+        "https://icdvsrhauwfomggyswbt.supabase.co/storage/v1/object/public/wahi/12.jpg",
+        "https://icdvsrhauwfomggyswbt.supabase.co/storage/v1/object/public/wahi/14.jpg",
+        "https://icdvsrhauwfomggyswbt.supabase.co/storage/v1/object/public/wahi/15.png"
+      ],
+      "variants": [
+        {
+          "id": "v-018-1",
+          "size": "XS",
+          "color": "Terracotta Gold",
+          "colorHex": "#C1700E",
+          "stock": 3,
+          "sku": "WF-PEW-018-XS-TGD"
+        },
+        {
+          "id": "v-018-2",
+          "size": "S",
+          "color": "Terracotta Gold",
+          "colorHex": "#C1700E",
+          "stock": 4,
+          "sku": "WF-PEW-018-S-TGD"
+        },
+        {
+          "id": "v-018-3",
+          "size": "M",
+          "color": "Terracotta Gold",
+          "colorHex": "#C1700E",
+          "stock": 5,
+          "sku": "WF-PEW-018-M-TGD"
+        },
+        {
+          "id": "v-018-4",
+          "size": "L",
+          "color": "Terracotta Gold",
+          "colorHex": "#C1700E",
+          "stock": 3,
+          "sku": "WF-PEW-018-L-TGD"
+        }
+      ],
+      "price": 5800,
+      "currency": "KES",
+      "tags": [
+        "wrap-dress",
+        "cocktail",
+        "party",
+        "flutter-sleeves",
+        "print"
+      ],
+      "rating": 4.6,
+      "reviewCount": 62,
+      "isFeatured": false,
+      "isNewArrival": false,
+      "material": "Chiffon, 100% polyester",
+      "careInstructions": "Hand wash cold. Hang dry. Cool iron.",
+      "createdAt": "2025-09-30T08:00:00Z"
+    },
+    {
+      "id": "prod-019",
+      "slug": "off-shoulder-gown",
+      "name": "Off-Shoulder Gown",
+      "brand": "Wahi Fashion",
+      "categorySlug": "party-evening",
+      "description": "A floor-length off-shoulder gown with a fitted bodice and flowing A-line skirt in blush rose. The sweetheart neckline and boning detail create an hourglass silhouette that photographs beautifully from every angle.",
+      "images": [
+        "https://icdvsrhauwfomggyswbt.supabase.co/storage/v1/object/public/wahi/16.jpg",
+        "https://icdvsrhauwfomggyswbt.supabase.co/storage/v1/object/public/wahi/17.jpg",
+        "https://icdvsrhauwfomggyswbt.supabase.co/storage/v1/object/public/wahi/18.jpg"
+      ],
+      "variants": [
+        {
+          "id": "v-019-1",
+          "size": "XS",
+          "color": "Blush Rose",
+          "colorHex": "#E8C4B8",
+          "stock": 2,
+          "sku": "WF-PEW-019-XS-BLR"
+        },
+        {
+          "id": "v-019-2",
+          "size": "S",
+          "color": "Blush Rose",
+          "colorHex": "#E8C4B8",
+          "stock": 3,
+          "sku": "WF-PEW-019-S-BLR"
+        },
+        {
+          "id": "v-019-3",
+          "size": "M",
+          "color": "Blush Rose",
+          "colorHex": "#E8C4B8",
+          "stock": 3,
+          "sku": "WF-PEW-019-M-BLR"
+        },
+        {
+          "id": "v-019-4",
+          "size": "L",
+          "color": "Blush Rose",
+          "colorHex": "#E8C4B8",
+          "stock": 1,
+          "sku": "WF-PEW-019-L-BLR"
+        },
+        {
+          "id": "v-019-5",
+          "size": "S",
+          "color": "Champagne Gold",
+          "colorHex": "#D4A853",
+          "stock": 2,
+          "sku": "WF-PEW-019-S-CHG"
+        }
+      ],
+      "price": 12500,
+      "currency": "KES",
+      "badge": "limited",
+      "tags": [
+        "gown",
+        "off-shoulder",
+        "sweetheart",
+        "floor-length",
+        "evening",
+        "luxury"
+      ],
+      "rating": 5.0,
+      "reviewCount": 29,
+      "isFeatured": true,
+      "isNewArrival": false,
+      "material": "Satin and tulle, boned bodice, fully lined",
+      "careInstructions": "Dry clean only.",
+      "createdAt": "2026-01-20T08:00:00Z"
+    },
+    {
+      "id": "prod-020",
+      "slug": "ankara-maxi-dress",
+      "name": "Ankara Maxi Dress",
+      "brand": "Wahi Fashion",
+      "categorySlug": "traditional-african",
+      "description": "A sweeping ankara maxi dress in a bold geometric blue and gold print. The off-shoulder neckline and layered ruffle hem are pure statement dressing rooted in African heritage. Wear your culture, wear your confidence.",
+      "images": [
+        "https://icdvsrhauwfomggyswbt.supabase.co/storage/v1/object/public/wahi/19.jpg",
+        "https://icdvsrhauwfomggyswbt.supabase.co/storage/v1/object/public/wahi/2.jpg",
+        "https://icdvsrhauwfomggyswbt.supabase.co/storage/v1/object/public/wahi/20.jpg"
+      ],
+      "variants": [
+        {
+          "id": "v-020-1",
+          "size": "S",
+          "color": "Blue Gold Print",
+          "colorHex": "#1B4B8A",
+          "stock": 4,
+          "sku": "WF-TAW-020-S-BGP"
+        },
+        {
+          "id": "v-020-2",
+          "size": "M",
+          "color": "Blue Gold Print",
+          "colorHex": "#1B4B8A",
+          "stock": 5,
+          "sku": "WF-TAW-020-M-BGP"
+        },
+        {
+          "id": "v-020-3",
+          "size": "L",
+          "color": "Blue Gold Print",
+          "colorHex": "#1B4B8A",
+          "stock": 3,
+          "sku": "WF-TAW-020-L-BGP"
+        },
+        {
+          "id": "v-020-4",
+          "size": "XL",
+          "color": "Blue Gold Print",
+          "colorHex": "#1B4B8A",
+          "stock": 2,
+          "sku": "WF-TAW-020-XL-BGP"
+        },
+        {
+          "id": "v-020-5",
+          "size": "M",
+          "color": "Red Earth Print",
+          "colorHex": "#8B2500",
+          "stock": 3,
+          "sku": "WF-TAW-020-M-REP"
+        },
+        {
+          "id": "v-020-6",
+          "size": "L",
+          "color": "Red Earth Print",
+          "colorHex": "#8B2500",
+          "stock": 2,
+          "sku": "WF-TAW-020-L-REP"
+        }
+      ],
+      "price": 6800,
+      "currency": "KES",
+      "badge": "bestseller",
+      "tags": [
+        "ankara",
+        "maxi",
+        "african-print",
+        "traditional",
+        "off-shoulder",
+        "heritage"
+      ],
+      "rating": 4.9,
+      "reviewCount": 186,
+      "isFeatured": true,
+      "isNewArrival": false,
+      "material": "100% cotton ankara fabric",
+      "careInstructions": "Hand wash cold. Do not bleach. Iron medium heat.",
+      "createdAt": "2025-08-01T08:00:00Z"
+    },
+    {
+      "id": "prod-021",
+      "slug": "kitenge-wrap-skirt",
+      "name": "Kitenge Wrap Skirt",
+      "brand": "Wahi Fashion",
+      "categorySlug": "traditional-african",
+      "description": "A vibrant kitenge wrap skirt in an exclusive Wahi-commissioned print. The adjustable tie waist, sweep-length hem, and bold colours celebrate East African textile tradition with a modern, wearable silhouette.",
+      "images": [
+        "https://icdvsrhauwfomggyswbt.supabase.co/storage/v1/object/public/wahi/23.jpg",
+        "https://icdvsrhauwfomggyswbt.supabase.co/storage/v1/object/public/wahi/25.jpg",
+        "https://icdvsrhauwfomggyswbt.supabase.co/storage/v1/object/public/wahi/27.jpg"
+      ],
+      "variants": [
+        {
+          "id": "v-021-1",
+          "size": "One Size",
+          "color": "Nairobi Sunrise",
+          "colorHex": "#D4691E",
+          "stock": 6,
+          "sku": "WF-TAW-021-OS-NSR"
+        },
+        {
+          "id": "v-021-2",
+          "size": "One Size",
+          "color": "Savanna Green",
+          "colorHex": "#4A7C3F",
+          "stock": 5,
+          "sku": "WF-TAW-021-OS-SGR"
+        },
+        {
+          "id": "v-021-3",
+          "size": "One Size",
+          "color": "Royal Purple",
+          "colorHex": "#5C1F7A",
+          "stock": 4,
+          "sku": "WF-TAW-021-OS-RPR"
+        }
+      ],
+      "price": 3800,
+      "currency": "KES",
+      "badge": "new",
+      "tags": [
+        "kitenge",
+        "wrap-skirt",
+        "east-african",
+        "traditional",
+        "cultural"
+      ],
+      "rating": 4.7,
+      "reviewCount": 93,
+      "isFeatured": false,
+      "isNewArrival": true,
+      "material": "100% cotton kitenge fabric",
+      "careInstructions": "Machine wash cold gentle. Hang dry. Iron reverse side.",
+      "createdAt": "2026-03-05T08:00:00Z"
+    },
+    {
+      "id": "prod-022",
+      "slug": "kente-fusion-blazer",
+      "name": "Kente Fusion Blazer",
+      "brand": "Wahi Fashion",
+      "categorySlug": "traditional-african",
+      "description": "A structured blazer featuring kente-inspired woven panels on the sleeves and lapels against a deep mahogany base. This is what cultural fusion looks like at its finest \u2014 where the boardroom meets heritage.",
+      "images": [
+        "https://icdvsrhauwfomggyswbt.supabase.co/storage/v1/object/public/wahi/28.png",
+        "https://icdvsrhauwfomggyswbt.supabase.co/storage/v1/object/public/wahi/29.jpg",
+        "https://icdvsrhauwfomggyswbt.supabase.co/storage/v1/object/public/wahi/3.jpg"
+      ],
+      "variants": [
+        {
+          "id": "v-022-1",
+          "size": "S",
+          "color": "Mahogany Kente",
+          "colorHex": "#3D1F0D",
+          "stock": 2,
+          "sku": "WF-TAW-022-S-MKT"
+        },
+        {
+          "id": "v-022-2",
+          "size": "M",
+          "color": "Mahogany Kente",
+          "colorHex": "#3D1F0D",
+          "stock": 3,
+          "sku": "WF-TAW-022-M-MKT"
+        },
+        {
+          "id": "v-022-3",
+          "size": "L",
+          "color": "Mahogany Kente",
+          "colorHex": "#3D1F0D",
+          "stock": 2,
+          "sku": "WF-TAW-022-L-MKT"
+        },
+        {
+          "id": "v-022-4",
+          "size": "S",
+          "color": "Midnight Kente",
+          "colorHex": "#1A1009",
+          "stock": 2,
+          "sku": "WF-TAW-022-S-NKT"
+        },
+        {
+          "id": "v-022-5",
+          "size": "M",
+          "color": "Midnight Kente",
+          "colorHex": "#1A1009",
+          "stock": 3,
+          "sku": "WF-TAW-022-M-NKT"
+        }
+      ],
+      "price": 9500,
+      "currency": "KES",
+      "badge": "limited",
+      "tags": [
+        "kente",
+        "blazer",
+        "fusion",
+        "traditional",
+        "office",
+        "heritage",
+        "statement"
+      ],
+      "rating": 4.8,
+      "reviewCount": 44,
+      "isFeatured": true,
+      "isNewArrival": false,
+      "material": "Ponte base with authentic kente-weave panels",
+      "careInstructions": "Dry clean only.",
+      "createdAt": "2026-01-15T08:00:00Z"
+    },
+    {
+      "id": "prod-023",
+      "slug": "ankara-puff-sleeve-top",
+      "name": "Ankara Puff Sleeve Top",
+      "brand": "Wahi Fashion",
+      "categorySlug": "traditional-african",
+      "description": "A cropped ankara top with voluminous puff sleeves and a square neckline. The structured sleeves and vibrant geometric print make this an instant statement piece. Pairs effortlessly with high-waisted jeans or a tailored skirt.",
+      "images": [
+        "https://icdvsrhauwfomggyswbt.supabase.co/storage/v1/object/public/wahi/30.jpg",
+        "https://icdvsrhauwfomggyswbt.supabase.co/storage/v1/object/public/wahi/31.jpg",
+        "https://icdvsrhauwfomggyswbt.supabase.co/storage/v1/object/public/wahi/32.jpg"
+      ],
+      "variants": [
+        {
+          "id": "v-023-1",
+          "size": "XS",
+          "color": "Ankara Mix 1",
+          "colorHex": "#D4691E",
+          "stock": 4,
+          "sku": "WF-TAW-023-XS-AM1"
+        },
+        {
+          "id": "v-023-2",
+          "size": "S",
+          "color": "Ankara Mix 1",
+          "colorHex": "#D4691E",
+          "stock": 5,
+          "sku": "WF-TAW-023-S-AM1"
+        },
+        {
+          "id": "v-023-3",
+          "size": "M",
+          "color": "Ankara Mix 1",
+          "colorHex": "#D4691E",
+          "stock": 4,
+          "sku": "WF-TAW-023-M-AM1"
+        },
+        {
+          "id": "v-023-4",
+          "size": "L",
+          "color": "Ankara Mix 1",
+          "colorHex": "#D4691E",
+          "stock": 2,
+          "sku": "WF-TAW-023-L-AM1"
+        },
+        {
+          "id": "v-023-5",
+          "size": "S",
+          "color": "Ankara Mix 2",
+          "colorHex": "#1B4B8A",
+          "stock": 3,
+          "sku": "WF-TAW-023-S-AM2"
+        },
+        {
+          "id": "v-023-6",
+          "size": "M",
+          "color": "Ankara Mix 2",
+          "colorHex": "#1B4B8A",
+          "stock": 3,
+          "sku": "WF-TAW-023-M-AM2"
+        }
+      ],
+      "price": 3200,
+      "currency": "KES",
+      "badge": "new",
+      "tags": [
+        "ankara",
+        "top",
+        "puff-sleeves",
+        "cropped",
+        "traditional",
+        "african-print"
+      ],
+      "rating": 4.6,
+      "reviewCount": 71,
+      "isFeatured": false,
+      "isNewArrival": true,
+      "material": "100% cotton ankara fabric",
+      "careInstructions": "Hand wash cold. Iron medium heat on reverse.",
+      "createdAt": "2026-03-15T08:00:00Z"
+    },
+    {
+      "id": "prod-024",
+      "slug": "contemporary-kaftan-gown",
+      "name": "Contemporary Kaftan Gown",
+      "brand": "Wahi Fashion",
+      "categorySlug": "traditional-african",
+      "description": "A contemporary kaftan gown that bridges tradition and modern luxury. Floor-length, wide sleeves, and a rich hand-embroidered neckline detail. This is cultural pride elevated to its highest form.",
+      "images": [
+        "https://icdvsrhauwfomggyswbt.supabase.co/storage/v1/object/public/wahi/34.jpg",
+        "https://icdvsrhauwfomggyswbt.supabase.co/storage/v1/object/public/wahi/35.jpg",
+        "https://icdvsrhauwfomggyswbt.supabase.co/storage/v1/object/public/wahi/36.jpg"
+      ],
+      "variants": [
+        {
+          "id": "v-024-1",
+          "size": "S",
+          "color": "Ivory Gold",
+          "colorHex": "#E8D5A3",
+          "stock": 3,
+          "sku": "WF-TAW-024-S-IVG"
+        },
+        {
+          "id": "v-024-2",
+          "size": "M",
+          "color": "Ivory Gold",
+          "colorHex": "#E8D5A3",
+          "stock": 4,
+          "sku": "WF-TAW-024-M-IVG"
+        },
+        {
+          "id": "v-024-3",
+          "size": "L",
+          "color": "Ivory Gold",
+          "colorHex": "#E8D5A3",
+          "stock": 3,
+          "sku": "WF-TAW-024-L-IVG"
+        },
+        {
+          "id": "v-024-4",
+          "size": "XL",
+          "color": "Ivory Gold",
+          "colorHex": "#E8D5A3",
+          "stock": 2,
+          "sku": "WF-TAW-024-XL-IVG"
+        },
+        {
+          "id": "v-024-5",
+          "size": "M",
+          "color": "Deep Royal Blue",
+          "colorHex": "#1A2F6E",
+          "stock": 3,
+          "sku": "WF-TAW-024-M-DRB"
+        }
+      ],
+      "price": 8200,
+      "currency": "KES",
+      "badge": "bestseller",
+      "tags": [
+        "kaftan",
+        "gown",
+        "traditional",
+        "embroidered",
+        "floor-length",
+        "heritage"
+      ],
+      "rating": 4.9,
+      "reviewCount": 112,
+      "isFeatured": true,
+      "isNewArrival": false,
+      "material": "Premium cotton-silk blend with hand embroidery",
+      "careInstructions": "Hand wash cold with mild detergent. Dry flat.",
+      "createdAt": "2025-07-10T08:00:00Z"
+    },
+    {
+      "id": "prod-025",
+      "slug": "mahogany-leather-tote",
+      "name": "Mahogany Leather Tote",
+      "brand": "Wahi Fashion",
+      "categorySlug": "accessories",
+      "description": "A structured leather tote in deep mahogany with gold hardware and a suede interior. Large enough for everything your day demands, refined enough to carry into any room. The gold WF monogram embossing is a quiet signature.",
+      "images": [
+        "https://icdvsrhauwfomggyswbt.supabase.co/storage/v1/object/public/wahi/4.png",
+        "https://icdvsrhauwfomggyswbt.supabase.co/storage/v1/object/public/wahi/40.jpg",
+        "https://icdvsrhauwfomggyswbt.supabase.co/storage/v1/object/public/wahi/42.jpg"
+      ],
+      "variants": [
+        {
+          "id": "v-025-1",
+          "size": "One Size",
+          "color": "Deep Mahogany",
+          "colorHex": "#3D1F0D",
+          "stock": 5,
+          "sku": "WF-ACC-025-OS-MAH"
+        },
+        {
+          "id": "v-025-2",
+          "size": "One Size",
+          "color": "Obsidian Black",
+          "colorHex": "#1A1009",
+          "stock": 4,
+          "sku": "WF-ACC-025-OS-BLK"
+        },
+        {
+          "id": "v-025-3",
+          "size": "One Size",
+          "color": "Warm Sand",
+          "colorHex": "#C9A87C",
+          "stock": 3,
+          "sku": "WF-ACC-025-OS-SND"
+        }
+      ],
+      "price": 8500,
+      "currency": "KES",
+      "badge": "bestseller",
+      "tags": [
+        "bag",
+        "tote",
+        "leather",
+        "accessories",
+        "office",
+        "structured"
+      ],
+      "rating": 4.8,
+      "reviewCount": 134,
+      "isFeatured": true,
+      "isNewArrival": false,
+      "material": "Full-grain leather exterior, suede lining, brass hardware",
+      "careInstructions": "Wipe clean with dry cloth. Condition with leather balm monthly.",
+      "createdAt": "2025-09-01T08:00:00Z"
+    },
+    {
+      "id": "prod-026",
+      "slug": "gold-statement-necklace",
+      "name": "Gold Statement Necklace",
+      "brand": "Wahi Fashion",
+      "categorySlug": "accessories",
+      "description": "A bold layered statement necklace in 18k gold-plated brass with geometric African-inspired pendants. Three adjustable chains that wear together or separately. The centerpiece of any look you build.",
+      "images": [
+        "https://icdvsrhauwfomggyswbt.supabase.co/storage/v1/object/public/wahi/1.jpg",
+        "https://icdvsrhauwfomggyswbt.supabase.co/storage/v1/object/public/wahi/12.jpg",
+        "https://icdvsrhauwfomggyswbt.supabase.co/storage/v1/object/public/wahi/14.jpg"
+      ],
+      "variants": [
+        {
+          "id": "v-026-1",
+          "size": "One Size",
+          "color": "Gold",
+          "colorHex": "#D4A853",
+          "stock": 8,
+          "sku": "WF-ACC-026-OS-GLD"
+        },
+        {
+          "id": "v-026-2",
+          "size": "One Size",
+          "color": "Rose Gold",
+          "colorHex": "#B76E79",
+          "stock": 6,
+          "sku": "WF-ACC-026-OS-RGD"
+        }
+      ],
+      "price": 3200,
+      "currency": "KES",
+      "badge": "new",
+      "tags": [
+        "necklace",
+        "jewelry",
+        "gold",
+        "statement",
+        "accessories",
+        "african"
+      ],
+      "rating": 4.7,
+      "reviewCount": 88,
+      "isFeatured": false,
+      "isNewArrival": true,
+      "material": "18k gold-plated brass, hypoallergenic",
+      "careInstructions": "Store in pouch when not wearing. Avoid water and perfume.",
+      "createdAt": "2026-02-20T08:00:00Z"
+    },
+    {
+      "id": "prod-027",
+      "slug": "silk-print-headwrap",
+      "name": "Silk Print Headwrap",
+      "brand": "Wahi Fashion",
+      "categorySlug": "accessories",
+      "description": "A generous 100% silk headwrap in an exclusive Wahi print. Versatile enough to style as a turban, wrap, or sash around a bag handle. The kind of accessory that transforms every look it touches.",
+      "images": [
+        "https://icdvsrhauwfomggyswbt.supabase.co/storage/v1/object/public/wahi/15.png",
+        "https://icdvsrhauwfomggyswbt.supabase.co/storage/v1/object/public/wahi/16.jpg",
+        "https://icdvsrhauwfomggyswbt.supabase.co/storage/v1/object/public/wahi/17.jpg"
+      ],
+      "variants": [
+        {
+          "id": "v-027-1",
+          "size": "One Size",
+          "color": "Nairobi Gold",
+          "colorHex": "#D4A853",
+          "stock": 6,
+          "sku": "WF-ACC-027-OS-NGD"
+        },
+        {
+          "id": "v-027-2",
+          "size": "One Size",
+          "color": "Ankara Blue",
+          "colorHex": "#1B4B8A",
+          "stock": 5,
+          "sku": "WF-ACC-027-OS-ABL"
+        },
+        {
+          "id": "v-027-3",
+          "size": "One Size",
+          "color": "Mahogany Print",
+          "colorHex": "#3D1F0D",
+          "stock": 4,
+          "sku": "WF-ACC-027-OS-MPR"
+        }
+      ],
+      "price": 2200,
+      "originalPrice": 2800,
+      "currency": "KES",
+      "badge": "sale",
+      "tags": [
+        "headwrap",
+        "silk",
+        "accessories",
+        "african",
+        "turban",
+        "versatile"
+      ],
+      "rating": 4.9,
+      "reviewCount": 203,
+      "isFeatured": true,
+      "isNewArrival": false,
+      "material": "100% mulberry silk, hand-rolled edges",
+      "careInstructions": "Hand wash cold with silk shampoo. Dry flat away from sunlight.",
+      "createdAt": "2025-06-01T08:00:00Z"
+    },
+    {
+      "id": "prod-028",
+      "slug": "woven-crossbody-bag",
+      "name": "Woven Crossbody Bag",
+      "brand": "Wahi Fashion",
+      "categorySlug": "accessories",
+      "description": "A hand-woven crossbody bag in natural raffia with leather trim and a gold chain strap. The artisan weave references East African basket-making tradition in a thoroughly modern silhouette. Limited quantities, handcrafted individually.",
+      "images": [
+        "https://icdvsrhauwfomggyswbt.supabase.co/storage/v1/object/public/wahi/18.jpg",
+        "https://icdvsrhauwfomggyswbt.supabase.co/storage/v1/object/public/wahi/19.jpg",
+        "https://icdvsrhauwfomggyswbt.supabase.co/storage/v1/object/public/wahi/2.jpg"
+      ],
+      "variants": [
+        {
+          "id": "v-028-1",
+          "size": "One Size",
+          "color": "Natural Raffia",
+          "colorHex": "#C9A87C",
+          "stock": 4,
+          "sku": "WF-ACC-028-OS-NFR"
+        },
+        {
+          "id": "v-028-2",
+          "size": "One Size",
+          "color": "Dark Woven",
+          "colorHex": "#3D2B1A",
+          "stock": 3,
+          "sku": "WF-ACC-028-OS-DWN"
+        }
+      ],
+      "price": 5800,
+      "currency": "KES",
+      "badge": "limited",
+      "tags": [
+        "bag",
+        "crossbody",
+        "woven",
+        "raffia",
+        "accessories",
+        "artisan",
+        "handcrafted"
+      ],
+      "rating": 4.8,
+      "reviewCount": 47,
+      "isFeatured": true,
+      "isNewArrival": false,
+      "material": "Hand-woven natural raffia, genuine leather trim, gold-tone chain",
+      "careInstructions": "Spot clean only. Store stuffed with tissue to maintain shape.",
+      "createdAt": "2026-01-05T08:00:00Z"
+    }
+  ]
+}
