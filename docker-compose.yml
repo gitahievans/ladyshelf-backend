@@ -8,37 +8,17 @@ services:
       - ./:/app
     ports:
       - "8000:8000"
-    environment:
-      DJANGO_SECRET_KEY: django-insecure-wahi-local-dev-key
-      DJANGO_DEBUG: "true"
-      DJANGO_ALLOWED_HOSTS: localhost,127.0.0.1,backend,solved-ordinance-decor-surrounding.trycloudflare.com,wahi.techridian.com
-      DJANGO_CORS_ALLOWED_ORIGINS: http://localhost:3000,http://127.0.0.1:3000
-      DJANGO_CSRF_TRUSTED_ORIGINS: https://solved-ordinance-decor-surrounding.trycloudflare.com,https://wahi.techridian.com
-      DJANGO_TIME_ZONE: Africa/Nairobi
-      DJANGO_DB_ENGINE: django.db.backends.postgresql
-      POSTGRES_DB: wahi_fashion
-      POSTGRES_USER: wahi
-      POSTGRES_PASSWORD: wahi
-      POSTGRES_HOST: db
-      POSTGRES_PORT: 5432
-      SUPABASE_URL: https://nehcexpdaoypguejwnvg.supabase.co
-      SUPABASE_JWKS_URL: https://nehcexpdaoypguejwnvg.supabase.co/auth/v1/.well-known/jwks.json
-      SASAPAY_BASE_URL: ${SASAPAY_BASE_URL:-https://sandbox.sasapay.app}
-      SASAPAY_CLIENT_ID: ${SASAPAY_CLIENT_ID:-}
-      SASAPAY_CLIENT_SECRET: ${SASAPAY_CLIENT_SECRET:-}
-      SASAPAY_MERCHANT_CODE: ${SASAPAY_MERCHANT_CODE:-}
-      SASAPAY_CALLBACK_URL: ${SASAPAY_CALLBACK_URL:-}
-      SASAPAY_TIMEOUT_SECONDS: ${SASAPAY_TIMEOUT_SECONDS:-30}
-      PREPAID_ORDER_EXPIRY_MINUTES: ${PREPAID_ORDER_EXPIRY_MINUTES:-30}
+    env_file:
+      - .env
     depends_on:
       - db
 
   db:
     image: postgres:16
     environment:
-      POSTGRES_DB: wahi_fashion
-      POSTGRES_USER: wahi
-      POSTGRES_PASSWORD: wahi
+      POSTGRES_DB: ${POSTGRES_DB:-wahi_fashion}
+      POSTGRES_USER: ${POSTGRES_USER:-wahi}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-wahi}
     ports:
       - "5432:5432"
     volumes:
