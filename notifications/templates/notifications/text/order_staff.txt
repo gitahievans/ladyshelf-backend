@@ -1,0 +1,21 @@
+{{ headline }}
+
+{{ intro }}
+
+Order number: {{ order.order_number }}
+Customer email: {{ customer_email }}
+Phone: {{ customer_phone }}
+Delivery mode: {{ delivery_mode_label }}
+Order status: {{ order_status_label }}
+Payment status: {{ payment_status_label }}
+Payment: {{ payment_method_label }} / {{ payment_timing_label }}
+Total: {{ total_label }}
+{% if needs_manual_delivery_fee %}
+Manual delivery fee confirmation required.
+{% endif %}
+
+Items:
+{% for item in items %}- {{ item.name }} ({{ item.size }} / {{ item.color }}) x{{ item.quantity }} - {{ item.line_total }}
+{% endfor %}
+
+{% if is_pickup %}Pickup: {{ pickup_instructions.streetAddress }}, {{ pickup_instructions.town }}, {{ pickup_instructions.county }}{% else %}Delivery: {{ delivery_details.streetAddress }}, {{ delivery_details.town }}, {{ delivery_details.county }}{% endif %}

@@ -1,0 +1,12 @@
+Payment needs attention for {{ order.order_number }}
+
+Hello {{ customer_name }},
+
+We could not confirm payment for your Wahi Fashion order {{ order.order_number }}.
+You can return to checkout and try the payment again.
+
+Current order status: {{ order_status_label }}
+Payment status: {{ payment_status_label }}
+Total: {{ total_label }}
+
+If you need help, reply to this email and our team will assist.

@@ -1,0 +1,23 @@
+Order {{ order.order_number }}
+
+Hello {{ customer_name }},
+
+{{ intro }}
+
+Order status: {{ order_status_label }}
+Payment status: {{ payment_status_label }}
+Order total: {{ total_label }}
+
+Items:
+{% for item in items %}- {{ item.name }} ({{ item.size }} / {{ item.color }}) x{{ item.quantity }} - {{ item.line_total }}
+{% endfor %}
+{% if is_pickup %}
+Pickup details:
+{{ pickup_instructions.streetAddress }}
+{{ pickup_instructions.town }}, {{ pickup_instructions.county }}
+Collect within {{ pickup_instructions.collectionWindowHours }} hours after confirmation.
+{% elif is_parcel and is_paid %}
+A store attendant will contact you to arrange parcel dispatch.
+{% endif %}
+
+Thank you for shopping with Wahi Fashion.

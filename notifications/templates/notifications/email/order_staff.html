@@ -1,0 +1,59 @@
+{% extends "notifications/email/base.html" %}
+
+{% block content %}
+  <p style="margin:0 0 10px; color:#D4A853; font-size:12px; line-height:1.5; letter-spacing:0.18em; text-transform:uppercase;">
+    Store operations
+  </p>
+  <h1 style="margin:0; color:#1A1009; font-family:Georgia, 'Times New Roman', serif; font-size:34px; line-height:1.15; font-weight:500;">
+    {{ headline }}
+  </h1>
+  <p style="margin:18px 0 0; color:#5C3D1E; font-size:16px; line-height:1.7;">{{ intro }}</p>
+
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin:26px 0; border:1px solid #E0D5C5; background:#FAF6F0;">
+    <tr>
+      <td style="padding:18px; color:#5C3D1E; font-size:14px; line-height:1.8;">
+        <strong style="color:#1A1009;">Order:</strong> {{ order.order_number }}<br>
+        <strong style="color:#1A1009;">Customer:</strong> {{ customer_email }}<br>
+        <strong style="color:#1A1009;">Phone:</strong> {{ customer_phone }}<br>
+        <strong style="color:#1A1009;">Delivery mode:</strong> {{ delivery_mode_label }}<br>
+        <strong style="color:#1A1009;">Order status:</strong> {{ order_status_label }}<br>
+        <strong style="color:#1A1009;">Payment:</strong> {{ payment_method_label }} · {{ payment_timing_label }} · {{ payment_status_label }}<br>
+        <strong style="color:#1A1009;">Total:</strong> {{ total_label }}
+      </td>
+    </tr>
+  </table>
+
+  {% if needs_manual_delivery_fee %}
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin-bottom:24px; background:#3D1F0D;">
+      <tr>
+        <td style="padding:18px; color:#FAF6F0; font-size:14px; line-height:1.6;">
+          This order needs manual delivery fee confirmation before dispatch.
+        </td>
+      </tr>
+    </table>
+  {% endif %}
+
+  <h2 style="margin:0 0 14px; color:#1A1009; font-family:Georgia, 'Times New Roman', serif; font-size:24px; line-height:1.2; font-weight:500;">Items</h2>
+  {% for item in items %}
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="border-top:1px solid #E0D5C5;">
+      <tr>
+        <td style="padding:14px 0; color:#1A1009; font-size:14px; line-height:1.6;">
+          <strong>{{ item.name }}</strong><br>
+          <span style="color:#5C3D1E;">{{ item.size }} / {{ item.color }} · Qty {{ item.quantity }}</span>
+        </td>
+        <td align="right" style="padding:14px 0; color:#1A1009; font-size:14px; white-space:nowrap;">{{ item.line_total }}</td>
+      </tr>
+    </table>
+  {% endfor %}
+
+  <h2 style="margin:28px 0 10px; color:#1A1009; font-family:Georgia, 'Times New Roman', serif; font-size:24px; line-height:1.2; font-weight:500;">
+    {% if is_pickup %}Pickup{% else %}Delivery{% endif %}
+  </h2>
+  <p style="margin:0; color:#5C3D1E; font-size:14px; line-height:1.7;">
+    {% if is_pickup %}
+      {{ pickup_instructions.streetAddress }}, {{ pickup_instructions.town }}, {{ pickup_instructions.county }}
+    {% else %}
+      {{ delivery_details.streetAddress }}, {{ delivery_details.town }}, {{ delivery_details.county }}
+    {% endif %}
+  </p>
+{% endblock %}

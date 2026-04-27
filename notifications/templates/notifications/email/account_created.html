@@ -1,0 +1,16 @@
+{% extends "notifications/email/base.html" %}
+
+{% block content %}
+  <p style="margin:0 0 10px; color:#D4A853; font-size:12px; line-height:1.5; letter-spacing:0.18em; text-transform:uppercase;">
+    Welcome to Wahi
+  </p>
+  <h1 style="margin:0; color:#1A1009; font-family:Georgia, 'Times New Roman', serif; font-size:36px; line-height:1.15; font-weight:500;">
+    Your wardrobe has a new home.
+  </h1>
+  <p style="margin:18px 0 0; color:#5C3D1E; font-size:16px; line-height:1.7;">
+    Hello {{ customer_name }}, thank you for joining Wahi Fashion. We are glad you are here.
+  </p>
+  <p style="margin:20px 0 0; color:#5C3D1E; font-size:14px; line-height:1.7;">
+    Discover refined pieces for work, occasionwear, traditional African fashion, and the everyday moments that deserve intention.
+  </p>
+{% endblock %}

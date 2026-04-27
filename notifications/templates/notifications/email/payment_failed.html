@@ -1,0 +1,25 @@
+{% extends "notifications/email/base.html" %}
+
+{% block content %}
+  <p style="margin:0 0 10px; color:#D4A853; font-size:12px; line-height:1.5; letter-spacing:0.18em; text-transform:uppercase;">
+    Payment needs attention
+  </p>
+  <h1 style="margin:0; color:#1A1009; font-family:Georgia, 'Times New Roman', serif; font-size:34px; line-height:1.15; font-weight:500;">
+    Your order is still reserved.
+  </h1>
+  <p style="margin:18px 0 0; color:#5C3D1E; font-size:16px; line-height:1.7;">
+    Hello {{ customer_name }}, we could not confirm payment for order {{ order.order_number }}. You can return to checkout and try again.
+  </p>
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin:28px 0; border:1px solid #E0D5C5; background:#FAF6F0;">
+    <tr>
+      <td style="padding:18px; color:#5C3D1E; font-size:14px; line-height:1.8;">
+        <strong style="color:#1A1009;">Order status:</strong> {{ order_status_label }}<br>
+        <strong style="color:#1A1009;">Payment status:</strong> {{ payment_status_label }}<br>
+        <strong style="color:#1A1009;">Total:</strong> {{ total_label }}
+      </td>
+    </tr>
+  </table>
+  <p style="margin:0; color:#5C3D1E; font-size:14px; line-height:1.7;">
+    If you need help, reply to this email and our team will assist.
+  </p>
+{% endblock %}

@@ -1,0 +1,7 @@
+Welcome to Wahi Fashion
+
+Hello {{ customer_name }},
+
+Thank you for joining Wahi Fashion. We are glad you are here.
+
+More than fashion. A lifestyle.
