@@ -3,7 +3,7 @@ from django.test import TestCase, override_settings
 from rest_framework.test import APIClient
 
 from catalog.models import Product, ProductVariant
-from checkout.models import DeliveryZone, PickupLocation
+from checkout.models import DeliverySettings, PickupLocation
 from customers.models import CustomerProfile
 from orders.models import Order
 
@@ -27,8 +27,27 @@ class CheckoutOrderCreationTests(TestCase):
         self.variant.stock = 5
         self.variant.save(update_fields=["stock", "updated_at"])
 
-        DeliveryZone.objects.all().delete()
+        DeliverySettings.objects.all().delete()
         PickupLocation.objects.all().delete()
+
+        DeliverySettings.objects.create(
+            name="Primary Delivery Settings",
+            shop_name="Wahi Fashion Roysambu",
+            shop_county="Nairobi",
+            shop_town="Roysambu",
+            shop_street_address="Lumumba Drive, Roysambu",
+            shop_latitude=-1.218257,
+            shop_longitude=36.886459,
+            rider_max_radius_km=50,
+            parcel_switch_radius_km=50,
+            rider_base_fee=200,
+            rider_increment_per_10km=200,
+            rider_estimated_window="2-3 business days",
+            parcel_estimated_window="Dispatch arranged after payment confirmation",
+            allow_pay_on_delivery=True,
+            parcel_manual_fee_confirmation_required=True,
+            is_active=True,
+        )
 
         PickupLocation.objects.create(
             name="Wahi Fashion Roysambu Pickup",
@@ -43,31 +62,6 @@ class CheckoutOrderCreationTests(TestCase):
             notes="Bring your order confirmation when collecting.",
             is_active=True,
         )
-        DeliveryZone.objects.create(
-            name="Nairobi Rider Zone",
-            delivery_mode="rider",
-            counties=["Nairobi"],
-            towns=["Westlands", "Roysambu", "Kilimani"],
-            delivery_fee=300,
-            manual_fee_confirmation_required=False,
-            allow_pay_on_delivery=True,
-            estimated_window="2-3 business days",
-            priority=10,
-            is_active=True,
-        )
-        DeliveryZone.objects.create(
-            name="Kenya Parcel Zone",
-            delivery_mode="parcel",
-            counties=[],
-            towns=[],
-            delivery_fee=0,
-            manual_fee_confirmation_required=False,
-            allow_pay_on_delivery=False,
-            estimated_window="3-5 business days",
-            priority=100,
-            is_active=True,
-        )
-
     def build_cart(self) -> list[dict]:
         return [
             {
@@ -89,6 +83,9 @@ class CheckoutOrderCreationTests(TestCase):
                         "phone": "+254700000000",
                         "county": "Mombasa",
                         "town": "Nyali",
+                        "locationLabel": "Nyali, Mombasa",
+                        "latitude": -4.0435,
+                        "longitude": 39.6682,
                         "streetAddress": "Links Road",
                         "deliveryMethod": "delivery",
                     },
@@ -104,7 +101,7 @@ class CheckoutOrderCreationTests(TestCase):
         self.assertEqual(response.data["orderStatus"], "awaiting_payment")
         self.assertEqual(response.data["paymentStatus"], "pending")
         self.assertEqual(response.data["guestEmail"], "guest@example.com")
-        self.assertFalse(response.data["manualDeliveryFeeConfirmationRequired"])
+        self.assertTrue(response.data["manualDeliveryFeeConfirmationRequired"])
         self.variant.refresh_from_db()
         self.assertEqual(self.variant.stock, 4)
         self.assertEqual(len(mail.outbox), 0)
@@ -123,6 +120,9 @@ class CheckoutOrderCreationTests(TestCase):
                         "phone": "+254700000000",
                         "county": "Nairobi",
                         "town": "Westlands",
+                        "locationLabel": "Westlands, Nairobi",
+                        "latitude": -1.2676,
+                        "longitude": 36.8108,
                         "streetAddress": "Rhapta Road",
                         "deliveryMethod": "delivery",
                     },

@@ -1,17 +1,13 @@
-from collections.abc import Iterable
+import math
 
 from rest_framework.exceptions import ValidationError
 
 from catalog.models import ProductVariant
-from checkout.models import DeliveryZone, PickupLocation
+from checkout.models import DeliverySettings, DeliveryZone, PickupLocation
 
 
 def _normalize_location(value: str | None) -> str:
     return (value or "").strip().lower()
-
-
-def _normalize_many(values: Iterable[str]) -> set[str]:
-    return {_normalize_location(value) for value in values if value}
 
 
 def get_active_pickup_location() -> PickupLocation:
@@ -25,9 +21,77 @@ def get_active_pickup_location() -> PickupLocation:
     return pickup_location
 
 
-def resolve_delivery_zone(county: str, town: str) -> DeliveryZone:
-    normalized_county = _normalize_location(county)
-    normalized_town = _normalize_location(town)
+def get_active_delivery_settings() -> DeliverySettings:
+    settings = DeliverySettings.objects.filter(is_active=True).first()
+
+    if settings is None:
+        raise ValidationError(
+            {
+                "detail": (
+                    "Delivery is not configured right now. "
+                    "Please choose pickup while the store updates delivery settings."
+                )
+            }
+        )
+
+    return settings
+
+
+def _coerce_coordinate(value, *, label: str) -> float:
+    if value in (None, ""):
+        raise ValidationError(
+            {
+                "detail": (
+                    "Please choose your delivery location from the search suggestions "
+                    "so we can calculate the delivery distance."
+                )
+            }
+        )
+
+    try:
+        return float(value)
+    except (TypeError, ValueError) as exc:  # pragma: no cover - defensive branch
+        raise ValidationError(
+            {
+                "detail": (
+                    f"The selected {label} is not valid. "
+                    "Please choose your location again."
+                )
+            }
+        ) from exc
+
+
+def _calculate_straight_line_km(
+    *,
+    origin_latitude: float,
+    origin_longitude: float,
+    destination_latitude: float,
+    destination_longitude: float,
+) -> float:
+    earth_radius_km = 6371.0
+    origin_lat = math.radians(origin_latitude)
+    origin_lng = math.radians(origin_longitude)
+    destination_lat = math.radians(destination_latitude)
+    destination_lng = math.radians(destination_longitude)
+    latitude_delta = destination_lat - origin_lat
+    longitude_delta = destination_lng - origin_lng
+
+    haversine = (
+        math.sin(latitude_delta / 2) ** 2
+        + math.cos(origin_lat) * math.cos(destination_lat) * math.sin(longitude_delta / 2) ** 2
+    )
+    central_angle = 2 * math.atan2(math.sqrt(haversine), math.sqrt(1 - haversine))
+    return earth_radius_km * central_angle
+
+
+def _calculate_rider_fee(*, distance_km: float, base_fee: int, increment_per_10km: int) -> int:
+    bands = max(1, math.ceil(distance_km / 10))
+    return base_fee + max(0, bands - 1) * increment_per_10km
+
+
+def resolve_delivery_quote_context(*, delivery_details: dict) -> dict[str, object]:
+    normalized_county = _normalize_location(delivery_details.get("county"))
+    normalized_town = _normalize_location(delivery_details.get("town"))
 
     if not normalized_county:
         raise ValidationError({"detail": "Please choose a county for delivery."})
@@ -35,41 +99,52 @@ def resolve_delivery_zone(county: str, town: str) -> DeliveryZone:
     if not normalized_town:
         raise ValidationError({"detail": "Please add your town for delivery."})
 
-    zones = DeliveryZone.objects.filter(is_active=True).order_by("priority", "id")
-
-    rider_match: DeliveryZone | None = None
-    parcel_match: DeliveryZone | None = None
-
-    for zone in zones:
-        zone_counties = _normalize_many(zone.counties)
-        zone_towns = _normalize_many(zone.towns)
-
-        if zone_counties and normalized_county not in zone_counties:
-            continue
-
-        if zone_towns and normalized_town not in zone_towns:
-            continue
-
-        if zone.delivery_mode == DeliveryZone.DeliveryMode.RIDER and rider_match is None:
-            rider_match = zone
-
-        if zone.delivery_mode == DeliveryZone.DeliveryMode.PARCEL and parcel_match is None:
-            parcel_match = zone
-
-    if rider_match is not None:
-        return rider_match
-
-    if parcel_match is not None:
-        return parcel_match
-
-    raise ValidationError(
-        {
-            "detail": (
-                "We do not have a delivery rule for that location yet. "
-                "Please confirm the town and county or choose pickup."
-            )
-        }
+    customer_latitude = _coerce_coordinate(
+        delivery_details.get("latitude"),
+        label="latitude",
     )
+    customer_longitude = _coerce_coordinate(
+        delivery_details.get("longitude"),
+        label="longitude",
+    )
+    delivery_settings = get_active_delivery_settings()
+    distance_km = _calculate_straight_line_km(
+        origin_latitude=float(delivery_settings.shop_latitude),
+        origin_longitude=float(delivery_settings.shop_longitude),
+        destination_latitude=customer_latitude,
+        destination_longitude=customer_longitude,
+    )
+    rider_cutoff_km = min(
+        delivery_settings.rider_max_radius_km,
+        delivery_settings.parcel_switch_radius_km,
+    )
+
+    if distance_km <= rider_cutoff_km:
+        delivery_mode = DeliveryZone.DeliveryMode.RIDER
+        delivery_fee = _calculate_rider_fee(
+            distance_km=distance_km,
+            base_fee=delivery_settings.rider_base_fee,
+            increment_per_10km=delivery_settings.rider_increment_per_10km,
+        )
+        return {
+            "deliveryMode": delivery_mode,
+            "deliveryFee": delivery_fee,
+            "manualDeliveryFeeConfirmationRequired": False,
+            "allowPayOnDelivery": delivery_settings.allow_pay_on_delivery,
+            "estimatedWindow": delivery_settings.rider_estimated_window,
+            "distanceKm": round(distance_km, 1),
+            "ruleLabel": f"Rider delivery within {rider_cutoff_km} km",
+        }
+
+    return {
+        "deliveryMode": DeliveryZone.DeliveryMode.PARCEL,
+        "deliveryFee": 0,
+        "manualDeliveryFeeConfirmationRequired": delivery_settings.parcel_manual_fee_confirmation_required,
+        "allowPayOnDelivery": False,
+        "estimatedWindow": delivery_settings.parcel_estimated_window,
+        "distanceKm": round(distance_km, 1),
+        "ruleLabel": f"Parcel delivery beyond {rider_cutoff_km} km",
+    }
 
 
 def build_validated_cart_items(

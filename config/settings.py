@@ -32,6 +32,7 @@ INSTALLED_APPS = [
     "corsheaders",
     "rest_framework",
     "drf_spectacular",
+    "admin_portal",
     "common",
     "customers",
     "catalog",
@@ -172,6 +173,7 @@ REST_FRAMEWORK = {
         "account": os.getenv("DRF_THROTTLE_ACCOUNT", "120/minute"),
         "account_orders": os.getenv("DRF_THROTTLE_ACCOUNT_ORDERS", "120/minute"),
         "wishlist": os.getenv("DRF_THROTTLE_WISHLIST", "120/minute"),
+        "admin": os.getenv("DRF_THROTTLE_ADMIN", "240/minute"),
     },
 }
 

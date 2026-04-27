@@ -24,26 +24,45 @@
   - can update `Order.order_status`, `Order.payment_status`, and `Order.internal_notes`
   - cannot add or delete orders or payment transactions
 
+## Backoffice surfaces
+
+- Custom staff dashboard:
+  - frontend route `/admin`
+  - preferred interface for day-to-day operations
+- Django admin:
+  - backend route `/admin/`
+  - remains available for fallback, emergency maintenance, superuser access, and deep model inspection
+
+The custom dashboard and Django admin intentionally coexist. Do not treat the custom dashboard rollout as a reason to remove Django admin.
+
 ## Daily backoffice workflows
 
 ### Products and stock
 
-1. Owners manage categories, products, and imagery in Django admin.
-2. Attendants update stock from `Product variants`.
+1. Owners manage categories, products, variants, and imagery from the custom dashboard.
+2. Attendants update stock from the custom dashboard Inventory page.
 3. Out-of-stock variants remain visible on the storefront and automatically become non-purchasable.
+4. Use Django admin as fallback for emergency or bulk maintenance.
 
 ### Orders
 
-1. Review new orders in `Orders`.
+1. Review new orders in the custom dashboard Orders page.
 2. For prepaid orders, confirm the payment state before dispatch.
 3. Update `order_status` as fulfillment progresses.
 4. Use `internal_notes` for manual delivery coordination or parcel follow-up.
+5. Use Django admin as fallback if the custom dashboard is unavailable.
 
 ### Payment verification
 
-1. Review raw payment metadata in `Payment transactions`.
+1. Review raw payment metadata in the custom dashboard Payments page.
 2. Use the checkout/order detail views to confirm the order state reflects the payment outcome.
 3. If prepaid orders remain pending too long, run the expiry command or scheduled job.
+
+### Staff access
+
+1. Owners grant staff access in the custom dashboard Staff page.
+2. Staff records link existing Supabase-backed customer profiles to an `owner` or `attendant` dashboard role.
+3. Deactivate staff access instead of deleting records when preserving access history is useful.
 
 ## Scheduled task
 
@@ -69,4 +88,3 @@ Run this on a schedule before launch. The command cancels expired unpaid prepay 
 - Customer/staff SMS via Africa's Talking
 - SasaPay live-money rollout verification and reconciliation
 - Optional Sentry integration if the launch environment needs deeper error aggregation
-- Custom staff dashboard after the MVP stabilizes in Django admin

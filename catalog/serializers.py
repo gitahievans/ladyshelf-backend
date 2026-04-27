@@ -6,15 +6,17 @@ from catalog.models import Category, Product, ProductVariant
 
 class ProductVariantSerializer(serializers.ModelSerializer):
     id = serializers.CharField(source="external_id")
+    adminId = serializers.CharField(source="pk")
     colorHex = serializers.CharField(source="color_hex")
 
     class Meta:
         model = ProductVariant
-        fields = ("id", "size", "color", "colorHex", "stock", "sku")
+        fields = ("id", "adminId", "size", "color", "colorHex", "stock", "sku")
 
 
 class ProductSerializer(serializers.ModelSerializer):
     id = serializers.CharField(source="external_id")
+    adminId = serializers.CharField(source="pk")
     categorySlug = serializers.CharField(source="category.slug")
     originalPrice = serializers.IntegerField(source="original_price", allow_null=True)
     reviewCount = serializers.IntegerField(source="review_count")
@@ -29,6 +31,7 @@ class ProductSerializer(serializers.ModelSerializer):
         model = Product
         fields = (
             "id",
+            "adminId",
             "slug",
             "name",
             "brand",

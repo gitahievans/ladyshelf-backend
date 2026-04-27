@@ -1,0 +1,518 @@
+from django.db.models import Count, Q
+from rest_framework import generics, status
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
+from rest_framework.views import APIView
+
+from catalog.models import Category, Product, ProductVariant
+from catalog.serializers import CategorySerializer, ProductSerializer, ProductVariantSerializer
+from checkout.models import DeliverySettings, DeliveryZone, PickupLocation
+from admin_portal.access import get_staff_access
+from admin_portal.models import AdminStaffAccess
+from admin_portal.permissions import IsAdminOwner, IsAdminStaff
+from admin_portal.serializers import (
+    AdminCategoryWriteSerializer,
+    AdminCustomerDetailSerializer,
+    AdminCustomerListItemSerializer,
+    AdminDashboardSummarySerializer,
+    AdminDeliveryZoneSerializer,
+    AdminDeliverySettingsSerializer,
+    AdminInventoryRowSerializer,
+    AdminOrderDetailSerializer,
+    AdminOrderListItemSerializer,
+    AdminOrderUpdateSerializer,
+    AdminPaymentDetailSerializer,
+    AdminPaymentListItemSerializer,
+    AdminPickupLocationSerializer,
+    AdminProductWriteSerializer,
+    AdminStaffCreateSerializer,
+    AdminStaffRecordSerializer,
+    AdminStaffUpdateSerializer,
+    AdminStockUpdateSerializer,
+    AdminVariantWriteSerializer,
+    AdminStaffUserSerializer,
+    serialize_permission_set,
+)
+from customers.models import CustomerProfile
+from orders.models import Order
+from payments.models import PaymentTransaction
+
+
+class AdminMeView(APIView):
+    permission_classes = [IsAuthenticated, IsAdminStaff]
+    throttle_scope = "admin"
+
+    def get(self, request):
+        staff_access = get_staff_access(request.user)
+        serializer = AdminStaffUserSerializer(staff_access)
+        return Response(serializer.data)
+
+
+class AdminPermissionsView(APIView):
+    permission_classes = [IsAuthenticated, IsAdminStaff]
+    throttle_scope = "admin"
+
+    def get(self, request):
+        staff_access = get_staff_access(request.user)
+        return Response(serialize_permission_set(staff_access))
+
+
+class AdminStaffListCreateView(generics.ListCreateAPIView):
+    permission_classes = [IsAuthenticated, IsAdminOwner]
+    throttle_scope = "admin"
+
+    def get_queryset(self):
+        return AdminStaffAccess.objects.select_related("customer").all()
+
+    def get_serializer_class(self):
+        if self.request.method == "POST":
+            return AdminStaffCreateSerializer
+
+        return AdminStaffRecordSerializer
+
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        staff_access = serializer.save()
+        record_serializer = AdminStaffRecordSerializer(staff_access)
+
+        return Response(record_serializer.data, status=status.HTTP_201_CREATED)
+
+
+class AdminStaffDetailView(generics.RetrieveUpdateAPIView):
+    permission_classes = [IsAuthenticated, IsAdminOwner]
+    serializer_class = AdminStaffUpdateSerializer
+    throttle_scope = "admin"
+
+    def get_queryset(self):
+        return AdminStaffAccess.objects.select_related("customer").all()
+
+    def retrieve(self, request, *args, **kwargs):
+        serializer = AdminStaffRecordSerializer(self.get_object())
+        return Response(serializer.data)
+
+    def partial_update(self, request, *args, **kwargs):
+        response = super().partial_update(request, *args, **kwargs)
+        serializer = AdminStaffRecordSerializer(self.get_object())
+        response.data = serializer.data
+        return response
+
+
+class AdminDashboardSummaryView(APIView):
+    permission_classes = [IsAuthenticated, IsAdminStaff]
+    throttle_scope = "admin"
+
+    def get(self, request):
+        fulfillment_statuses = [
+            Order.OrderStatus.NEW,
+            Order.OrderStatus.PAID,
+            Order.OrderStatus.AWAITING_DELIVERY_FEE_CONFIRMATION,
+            Order.OrderStatus.READY_FOR_DISPATCH,
+            Order.OrderStatus.OUT_FOR_DELIVERY,
+            Order.OrderStatus.READY_FOR_PICKUP,
+        ]
+        payment_issue_statuses = [
+            PaymentTransaction.Status.INITIATED,
+            PaymentTransaction.Status.PENDING,
+            PaymentTransaction.Status.FAILED,
+        ]
+
+        recent_paid_orders = Order.objects.select_related("customer").filter(
+            payment_status=Order.PaymentStatus.PAID,
+        )[:5]
+        payment_issues = PaymentTransaction.objects.select_related("order").filter(
+            status__in=payment_issue_statuses,
+        )[:5]
+        low_stock_items = ProductVariant.objects.select_related("product").filter(
+            stock__lte=3,
+        ).order_by("stock", "product__name")[:6]
+
+        payload = {
+            "awaitingPaymentOrders": Order.objects.filter(
+                order_status=Order.OrderStatus.AWAITING_PAYMENT,
+            ).count(),
+            "fulfillmentActionOrders": Order.objects.filter(
+                order_status__in=fulfillment_statuses,
+            ).count(),
+            "lowStockVariants": ProductVariant.objects.filter(stock__lte=3).count(),
+            "recentPaidOrders": [
+                {
+                    "orderNumber": order.order_number,
+                    "customerLabel": order.customer.email if order.customer else order.guest_email,
+                    "total": order.total,
+                    "currency": order.currency,
+                    "paymentStatus": order.payment_status,
+                    "orderStatus": order.order_status,
+                    "deliveryMode": order.delivery_mode,
+                    "createdAt": order.created_at,
+                }
+                for order in recent_paid_orders
+            ],
+            "paymentIssueCount": PaymentTransaction.objects.filter(
+                status__in=payment_issue_statuses,
+            ).count(),
+            "paymentIssues": [
+                {
+                    "id": str(transaction.pk),
+                    "orderNumber": transaction.order.order_number,
+                    "status": transaction.status,
+                    "amount": transaction.amount,
+                    "currency": transaction.currency,
+                    "provider": transaction.provider,
+                    "createdAt": transaction.created_at,
+                }
+                for transaction in payment_issues
+            ],
+            "lowStockItems": [
+                {
+                    "id": str(variant.pk),
+                    "productName": variant.product.name,
+                    "sku": variant.sku,
+                    "size": variant.size,
+                    "color": variant.color,
+                    "stock": variant.stock,
+                }
+                for variant in low_stock_items
+            ],
+        }
+        serializer = AdminDashboardSummarySerializer(data=payload)
+        serializer.is_valid(raise_exception=True)
+
+        return Response(serializer.validated_data)
+
+
+class AdminOrderListView(generics.ListAPIView):
+    permission_classes = [IsAuthenticated, IsAdminStaff]
+    serializer_class = AdminOrderListItemSerializer
+    throttle_scope = "admin"
+
+    def get_queryset(self):
+        queryset = Order.objects.select_related("customer").all()
+        order_status = self.request.query_params.get("orderStatus")
+        payment_status = self.request.query_params.get("paymentStatus")
+        delivery_mode = self.request.query_params.get("deliveryMode")
+        manual_fee = self.request.query_params.get("manualFee")
+        customer_type = self.request.query_params.get("customerType")
+        query = self.request.query_params.get("q", "").strip()
+
+        if order_status:
+            queryset = queryset.filter(order_status=order_status)
+        if payment_status:
+            queryset = queryset.filter(payment_status=payment_status)
+        if delivery_mode:
+            queryset = queryset.filter(delivery_mode=delivery_mode)
+        if manual_fee in {"true", "false"}:
+            queryset = queryset.filter(
+                manual_delivery_fee_confirmation_required=manual_fee == "true"
+            )
+        if customer_type == "guest":
+            queryset = queryset.filter(customer__isnull=True)
+        if customer_type == "account":
+            queryset = queryset.filter(customer__isnull=False)
+        if query:
+            queryset = queryset.filter(
+                Q(order_number__icontains=query)
+                | Q(customer__email__icontains=query)
+                | Q(guest_email__icontains=query)
+            )
+
+        return queryset[:100]
+
+
+class AdminOrderDetailView(generics.RetrieveUpdateAPIView):
+    permission_classes = [IsAuthenticated, IsAdminStaff]
+    lookup_field = "order_number"
+    throttle_scope = "admin"
+
+    def get_queryset(self):
+        return (
+            Order.objects.select_related("customer")
+            .prefetch_related("items", "items__product", "payment_transactions")
+            .all()
+        )
+
+    def get_serializer_class(self):
+        if self.request.method == "PATCH":
+            return AdminOrderUpdateSerializer
+
+        return AdminOrderDetailSerializer
+
+    def partial_update(self, request, *args, **kwargs):
+        response = super().partial_update(request, *args, **kwargs)
+        serializer = AdminOrderDetailSerializer(self.get_object())
+        response.data = serializer.data
+        return response
+
+
+class AdminPaymentListView(generics.ListAPIView):
+    permission_classes = [IsAuthenticated, IsAdminStaff]
+    serializer_class = AdminPaymentListItemSerializer
+    throttle_scope = "admin"
+
+    def get_queryset(self):
+        queryset = PaymentTransaction.objects.select_related("order").all()
+        status_value = self.request.query_params.get("status")
+        query = self.request.query_params.get("q", "").strip()
+
+        if status_value:
+            queryset = queryset.filter(status=status_value)
+        if query:
+            queryset = queryset.filter(
+                Q(order__order_number__icontains=query)
+                | Q(merchant_reference__icontains=query)
+                | Q(merchant_request_id__icontains=query)
+                | Q(checkout_request_id__icontains=query)
+                | Q(transaction_code__icontains=query)
+            )
+
+        return queryset[:100]
+
+
+class AdminPaymentDetailView(generics.RetrieveAPIView):
+    permission_classes = [IsAuthenticated, IsAdminStaff]
+    serializer_class = AdminPaymentDetailSerializer
+    throttle_scope = "admin"
+
+    def get_queryset(self):
+        return PaymentTransaction.objects.select_related("order").all()
+
+
+class AdminCustomerListView(generics.ListAPIView):
+    permission_classes = [IsAuthenticated, IsAdminStaff]
+    serializer_class = AdminCustomerListItemSerializer
+    throttle_scope = "admin"
+
+    def get_queryset(self):
+        queryset = CustomerProfile.objects.annotate(orderCount=Count("orders"))
+        query = self.request.query_params.get("q", "").strip()
+
+        if query:
+            queryset = queryset.filter(
+                Q(email__icontains=query)
+                | Q(first_name__icontains=query)
+                | Q(last_name__icontains=query)
+                | Q(phone__icontains=query)
+            )
+
+        return queryset[:100]
+
+
+class AdminCustomerDetailView(generics.RetrieveAPIView):
+    permission_classes = [IsAuthenticated, IsAdminStaff]
+    serializer_class = AdminCustomerDetailSerializer
+    throttle_scope = "admin"
+
+    def get_queryset(self):
+        return (
+            CustomerProfile.objects.prefetch_related(
+                "addresses",
+                "orders",
+                "wishlist_items",
+                "wishlist_items__product",
+            )
+            .all()
+        )
+
+
+class OwnerMutationMixin:
+    def get_permissions(self):
+        if self.request.method in {"POST", "PUT", "PATCH", "DELETE"}:
+            return [IsAuthenticated(), IsAdminOwner()]
+
+        return [IsAuthenticated(), IsAdminStaff()]
+
+
+class AdminCategoryListCreateView(OwnerMutationMixin, generics.ListCreateAPIView):
+    throttle_scope = "admin"
+
+    def get_queryset(self):
+        return Category.objects.annotate(product_count=Count("products")).order_by("name")
+
+    def get_serializer_class(self):
+        if self.request.method == "POST":
+            return AdminCategoryWriteSerializer
+
+        return CategorySerializer
+
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        category = serializer.save()
+        return Response(CategorySerializer(category).data, status=status.HTTP_201_CREATED)
+
+
+class AdminCategoryDetailView(OwnerMutationMixin, generics.RetrieveUpdateDestroyAPIView):
+    throttle_scope = "admin"
+
+    def get_queryset(self):
+        return Category.objects.annotate(product_count=Count("products")).all()
+
+    def get_serializer_class(self):
+        if self.request.method in {"PUT", "PATCH"}:
+            return AdminCategoryWriteSerializer
+
+        return CategorySerializer
+
+    def partial_update(self, request, *args, **kwargs):
+        super().partial_update(request, *args, **kwargs)
+        return Response(CategorySerializer(self.get_object()).data)
+
+
+class AdminProductListCreateView(OwnerMutationMixin, generics.ListCreateAPIView):
+    throttle_scope = "admin"
+
+    def get_queryset(self):
+        queryset = Product.objects.select_related("category").prefetch_related("variants")
+        query = self.request.query_params.get("q", "").strip()
+        category = self.request.query_params.get("category", "").strip()
+
+        if query:
+            queryset = queryset.filter(
+                Q(name__icontains=query)
+                | Q(slug__icontains=query)
+                | Q(description__icontains=query)
+                | Q(variants__sku__icontains=query)
+            ).distinct()
+        if category:
+            queryset = queryset.filter(category__slug=category)
+
+        return queryset[:100]
+
+    def get_serializer_class(self):
+        if self.request.method == "POST":
+            return AdminProductWriteSerializer
+
+        return ProductSerializer
+
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        product = serializer.save()
+        return Response(ProductSerializer(product).data, status=status.HTTP_201_CREATED)
+
+
+class AdminProductDetailView(OwnerMutationMixin, generics.RetrieveUpdateDestroyAPIView):
+    throttle_scope = "admin"
+
+    def get_queryset(self):
+        return Product.objects.select_related("category").prefetch_related("variants")
+
+    def get_serializer_class(self):
+        if self.request.method in {"PUT", "PATCH"}:
+            return AdminProductWriteSerializer
+
+        return ProductSerializer
+
+    def partial_update(self, request, *args, **kwargs):
+        super().partial_update(request, *args, **kwargs)
+        return Response(ProductSerializer(self.get_object()).data)
+
+
+class AdminProductVariantCreateView(generics.CreateAPIView):
+    permission_classes = [IsAuthenticated, IsAdminOwner]
+    serializer_class = AdminVariantWriteSerializer
+    throttle_scope = "admin"
+
+    def perform_create(self, serializer):
+        product = generics.get_object_or_404(Product, pk=self.kwargs["pk"])
+        serializer.save(product=product)
+
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        product = generics.get_object_or_404(Product, pk=self.kwargs["pk"])
+        variant = serializer.save(product=product)
+        return Response(ProductVariantSerializer(variant).data, status=status.HTTP_201_CREATED)
+
+
+class AdminVariantDetailView(OwnerMutationMixin, generics.RetrieveUpdateDestroyAPIView):
+    throttle_scope = "admin"
+
+    def get_queryset(self):
+        return ProductVariant.objects.select_related("product")
+
+    def get_serializer_class(self):
+        if self.request.method in {"PUT", "PATCH"}:
+            return AdminVariantWriteSerializer
+
+        return ProductVariantSerializer
+
+    def partial_update(self, request, *args, **kwargs):
+        super().partial_update(request, *args, **kwargs)
+        return Response(ProductVariantSerializer(self.get_object()).data)
+
+
+class AdminInventoryListView(generics.ListAPIView):
+    permission_classes = [IsAuthenticated, IsAdminStaff]
+    serializer_class = AdminInventoryRowSerializer
+    throttle_scope = "admin"
+
+    def get_queryset(self):
+        queryset = ProductVariant.objects.select_related("product").order_by("product__name", "sku")
+        query = self.request.query_params.get("q", "").strip()
+        low_stock = self.request.query_params.get("lowStock")
+
+        if query:
+            queryset = queryset.filter(
+                Q(product__name__icontains=query)
+                | Q(sku__icontains=query)
+                | Q(color__icontains=query)
+                | Q(size__icontains=query)
+            )
+        if low_stock == "true":
+            queryset = queryset.filter(stock__lte=3)
+
+        return queryset[:150]
+
+
+class AdminVariantStockUpdateView(generics.UpdateAPIView):
+    permission_classes = [IsAuthenticated, IsAdminStaff]
+    serializer_class = AdminStockUpdateSerializer
+    throttle_scope = "admin"
+
+    def get_queryset(self):
+        return ProductVariant.objects.select_related("product")
+
+    def partial_update(self, request, *args, **kwargs):
+        super().partial_update(request, *args, **kwargs)
+        return Response(AdminInventoryRowSerializer(self.get_object()).data)
+
+
+class AdminDeliveryZoneListCreateView(OwnerMutationMixin, generics.ListCreateAPIView):
+    serializer_class = AdminDeliveryZoneSerializer
+    throttle_scope = "admin"
+
+    def get_queryset(self):
+        return DeliveryZone.objects.all()
+
+
+class AdminDeliveryZoneDetailView(OwnerMutationMixin, generics.RetrieveUpdateDestroyAPIView):
+    serializer_class = AdminDeliveryZoneSerializer
+    throttle_scope = "admin"
+
+    def get_queryset(self):
+        return DeliveryZone.objects.all()
+
+
+class AdminDeliverySettingsDetailView(OwnerMutationMixin, generics.RetrieveUpdateAPIView):
+    serializer_class = AdminDeliverySettingsSerializer
+    throttle_scope = "admin"
+
+    def get_object(self):
+        return DeliverySettings.objects.filter(is_active=True).first() or DeliverySettings.objects.first()
+
+
+class AdminPickupLocationListCreateView(OwnerMutationMixin, generics.ListCreateAPIView):
+    serializer_class = AdminPickupLocationSerializer
+    throttle_scope = "admin"
+
+    def get_queryset(self):
+        return PickupLocation.objects.all()
+
+
+class AdminPickupLocationDetailView(OwnerMutationMixin, generics.RetrieveUpdateDestroyAPIView):
+    serializer_class = AdminPickupLocationSerializer
+    throttle_scope = "admin"
+
+    def get_queryset(self):
+        return PickupLocation.objects.all()

@@ -11,7 +11,7 @@ from checkout.services import (
     build_payment_options,
     build_validated_cart_items,
     get_active_pickup_location,
-    resolve_delivery_zone,
+    resolve_delivery_quote_context,
     validate_payment_selection,
 )
 from customers.models import CustomerProfile
@@ -52,25 +52,30 @@ def build_checkout_quote_data(
         pickup_instructions = PickupLocationSerializer(pickup_location).data
         messages.append("Pickup is prepaid only.")
     else:
-        zone = resolve_delivery_zone(
-            county=delivery_details.get("county", ""),
-            town=delivery_details.get("town", ""),
+        delivery_context = resolve_delivery_quote_context(
+            delivery_details=delivery_details,
         )
-        delivery_mode = zone.delivery_mode
-        delivery_fee = zone.delivery_fee
-        manual_fee_confirmation_required = zone.manual_fee_confirmation_required
-        estimated_window = zone.estimated_window
+        delivery_mode = delivery_context["deliveryMode"]
+        delivery_fee = delivery_context["deliveryFee"]
+        manual_fee_confirmation_required = delivery_context[
+            "manualDeliveryFeeConfirmationRequired"
+        ]
+        estimated_window = delivery_context["estimatedWindow"]
         available_options = build_payment_options(
             delivery_mode=delivery_mode,
-            allow_pay_on_delivery=zone.allow_pay_on_delivery,
+            allow_pay_on_delivery=delivery_context["allowPayOnDelivery"],
         )
 
-        if zone.delivery_mode == Order.DeliveryMode.PARCEL:
+        if delivery_mode == Order.DeliveryMode.PARCEL:
             messages.append("Parcel delivery is prepaid only.")
 
-        if zone.delivery_mode == Order.DeliveryMode.PARCEL:
+        if delivery_mode == Order.DeliveryMode.PARCEL:
             messages.append(
                 "Parcel orders are prepaid. A store attendant will contact you after payment to arrange dispatch."
+            )
+        else:
+            messages.append(
+                "Rider delivery is priced automatically from straight-line distance to the shop."
             )
 
     resolved_payment_selection = validate_payment_selection(
@@ -93,6 +98,8 @@ def build_checkout_quote_data(
         "paymentSelection": resolved_payment_selection,
         "messages": messages,
         "pickupInstructions": pickup_instructions,
+        "distanceKm": delivery_context["distanceKm"] if delivery_method != "pickup" else None,
+        "deliveryRuleLabel": delivery_context["ruleLabel"] if delivery_method != "pickup" else "",
     }
 
 

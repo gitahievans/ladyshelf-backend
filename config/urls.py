@@ -9,6 +9,7 @@ admin.site.index_title = "Store Operations"
 urlpatterns = [
     path("admin/", admin.site.urls),
     path("api/v1/", include("common.urls")),
+    path("api/v1/admin/", include("admin_portal.urls")),
     path("api/v1/account/", include("customers.urls")),
     path("api/v1/account/", include("orders.account_urls")),
     path("api/v1/", include("orders.urls")),

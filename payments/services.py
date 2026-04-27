@@ -164,15 +164,6 @@ def get_payment_ready_order(order_number: str) -> Order:
     if order.payment_timing != Order.PaymentTiming.PREPAY:
         raise ValidationError({"detail": "This order does not require online payment."})
 
-    if order.manual_delivery_fee_confirmation_required:
-        raise ValidationError(
-            {
-                "detail": (
-                    "Payment will open after the delivery fee is confirmed for this parcel order."
-                )
-            }
-        )
-
     if order.payment_method != Order.PaymentMethod.MPESA:
         raise ValidationError({"detail": "Only M-Pesa checkout is enabled in this phase."})
 

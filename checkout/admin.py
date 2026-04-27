@@ -1,6 +1,22 @@
 from django.contrib import admin
 
-from checkout.models import DeliveryZone, PickupLocation
+from checkout.models import DeliverySettings, DeliveryZone, PickupLocation
+
+
+@admin.register(DeliverySettings)
+class DeliverySettingsAdmin(admin.ModelAdmin):
+    list_display = (
+        "name",
+        "shop_name",
+        "rider_max_radius_km",
+        "parcel_switch_radius_km",
+        "rider_base_fee",
+        "rider_increment_per_10km",
+        "allow_pay_on_delivery",
+        "is_active",
+    )
+    list_filter = ("allow_pay_on_delivery", "parcel_manual_fee_confirmation_required", "is_active")
+    search_fields = ("name", "shop_name", "shop_town", "shop_county", "shop_street_address")
 
 
 @admin.register(DeliveryZone)
