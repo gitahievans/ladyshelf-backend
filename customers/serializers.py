@@ -63,9 +63,32 @@ class CustomerProfileSerializer(serializers.ModelSerializer):
 
 
 class CustomerProfileUpdateSerializer(serializers.ModelSerializer):
+    firstName = serializers.CharField(source="first_name", required=False)
+    lastName = serializers.CharField(source="last_name", required=False)
+
     class Meta:
         model = CustomerProfile
-        fields = ("phone",)
+        fields = ("firstName", "lastName", "phone")
+
+    def validate(self, attrs):
+        if not attrs:
+            raise serializers.ValidationError("Please provide at least one field to update.")
+
+        return attrs
+
+    def validate_first_name(self, value):
+        first_name = value.strip()
+        if not first_name:
+            raise serializers.ValidationError("Please provide your first name.")
+
+        return first_name
+
+    def validate_last_name(self, value):
+        last_name = value.strip()
+        if not last_name:
+            raise serializers.ValidationError("Please provide your last name.")
+
+        return last_name
 
     def validate_phone(self, value):
         phone = value.strip()
