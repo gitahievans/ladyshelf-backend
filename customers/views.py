@@ -4,7 +4,11 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from customers.models import Address
-from customers.serializers import AddressSerializer, CustomerProfileSerializer
+from customers.serializers import (
+    AddressSerializer,
+    CustomerProfileSerializer,
+    CustomerProfileUpdateSerializer,
+)
 
 
 class MeView(APIView):
@@ -14,6 +18,18 @@ class MeView(APIView):
     def get(self, request):
         serializer = CustomerProfileSerializer(request.user)
         return Response(serializer.data)
+
+    def patch(self, request):
+        serializer = CustomerProfileUpdateSerializer(
+            request.user,
+            data=request.data,
+            partial=True,
+        )
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+
+        response_serializer = CustomerProfileSerializer(request.user)
+        return Response(response_serializer.data)
 
 
 class AddressListCreateView(generics.ListCreateAPIView):

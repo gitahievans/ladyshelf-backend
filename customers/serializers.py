@@ -60,3 +60,16 @@ class CustomerProfileSerializer(serializers.ModelSerializer):
             "addresses",
             "createdAt",
         )
+
+
+class CustomerProfileUpdateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = CustomerProfile
+        fields = ("phone",)
+
+    def validate_phone(self, value):
+        phone = value.strip()
+        if not phone:
+            raise serializers.ValidationError("Please provide a phone number.")
+
+        return phone

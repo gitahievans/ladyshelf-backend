@@ -26,6 +26,37 @@ class AccountEndpointsTests(TestCase):
         self.assertEqual(response.json()["email"], "customer@example.com")
         self.assertEqual(response.json()["firstName"], "Asha")
 
+    def test_authenticated_user_can_update_phone(self):
+        self.client.force_authenticate(user=self.customer)
+
+        response = self.client.patch(
+            "/api/v1/account/me",
+            {
+                "phone": " +254711223344 ",
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.customer.refresh_from_db()
+        self.assertEqual(self.customer.phone, "+254711223344")
+        self.assertEqual(response.json()["phone"], "+254711223344")
+
+    def test_blank_phone_is_rejected(self):
+        self.client.force_authenticate(user=self.customer)
+
+        response = self.client.patch(
+            "/api/v1/account/me",
+            {
+                "phone": "   ",
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.customer.refresh_from_db()
+        self.assertEqual(self.customer.phone, "")
+
     def test_authenticated_user_can_create_address(self):
         self.client.force_authenticate(user=self.customer)
 
