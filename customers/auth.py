@@ -109,8 +109,24 @@ class SupabaseJWTAuthentication(authentication.BaseAuthentication):
         )
 
         updates = []
-        for field, value in defaults.items():
+        synced_fields = {
+            "email": claims.email,
+            "email_confirmed_at": claims.email_confirmed_at,
+            "avatar_url": claims.avatar_url,
+        }
+        backfill_fields = {
+            "first_name": claims.first_name,
+            "last_name": claims.last_name,
+            "phone": claims.phone,
+        }
+
+        for field, value in synced_fields.items():
             if value and getattr(customer, field) != value:
+                setattr(customer, field, value)
+                updates.append(field)
+
+        for field, value in backfill_fields.items():
+            if value and not getattr(customer, field):
                 setattr(customer, field, value)
                 updates.append(field)
 

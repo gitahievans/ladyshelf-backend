@@ -4,6 +4,7 @@ from django.test import TestCase
 from rest_framework import exceptions
 from rest_framework.test import APIClient
 
+from customers.auth import SupabaseJWTAuthentication
 from customers.models import Address, CustomerProfile
 
 
@@ -128,5 +129,58 @@ class SupabaseAuthenticationTests(TestCase):
             response = client.get("/api/v1/account/me", HTTP_AUTHORIZATION="Bearer bad-token")
 
         self.assertEqual(response.status_code, 403)
+
+    def test_existing_profile_edits_are_not_overwritten_by_claims(self):
+        customer = CustomerProfile.objects.create(
+            supabase_user_id="supabase-user-2",
+            email="customer2@example.com",
+            first_name="Edited",
+            last_name="Profile",
+            phone="+254799000111",
+        )
+        payload = {
+            "sub": "supabase-user-2",
+            "email": "customer2@example.com",
+            "email_confirmed_at": None,
+            "user_metadata": {
+                "first_name": "Token",
+                "last_name": "Name",
+                "phone": "+254700000000",
+            },
+        }
+
+        resolved_customer = SupabaseJWTAuthentication()._get_or_create_customer(payload)
+
+        customer.refresh_from_db()
+        self.assertEqual(resolved_customer.pk, customer.pk)
+        self.assertEqual(customer.first_name, "Edited")
+        self.assertEqual(customer.last_name, "Profile")
+        self.assertEqual(customer.phone, "+254799000111")
+
+    def test_blank_profile_fields_can_still_be_backfilled_from_claims(self):
+        customer = CustomerProfile.objects.create(
+            supabase_user_id="supabase-user-3",
+            email="customer3@example.com",
+            first_name="",
+            last_name="",
+            phone="",
+        )
+        payload = {
+            "sub": "supabase-user-3",
+            "email": "customer3@example.com",
+            "email_confirmed_at": None,
+            "user_metadata": {
+                "first_name": "Token",
+                "last_name": "Backfill",
+                "phone": "+254711000222",
+            },
+        }
+
+        SupabaseJWTAuthentication()._get_or_create_customer(payload)
+
+        customer.refresh_from_db()
+        self.assertEqual(customer.first_name, "Token")
+        self.assertEqual(customer.last_name, "Backfill")
+        self.assertEqual(customer.phone, "+254711000222")
 
 # Create your tests here.
