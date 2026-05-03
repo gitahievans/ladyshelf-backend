@@ -1,7 +1,7 @@
 from rest_framework import serializers
 
 from orders.serializers import OrderSerializer
-from payments.models import PaymentTransaction
+from payments.models import PaymentTransaction, Receipt
 
 
 class SasaPayCheckoutSerializer(serializers.Serializer):
@@ -56,6 +56,43 @@ class PaymentTransactionSerializer(serializers.ModelSerializer):
             "createdAt",
             "updatedAt",
         )
+
+
+class ReceiptSerializer(serializers.ModelSerializer):
+    receiptNumber = serializers.CharField(source="receipt_number")
+    paymentTransactionId = serializers.SerializerMethodField()
+    issuedAt = serializers.DateTimeField(source="issued_at")
+    sentAt = serializers.DateTimeField(source="sent_at", allow_null=True)
+    sentToEmail = serializers.EmailField(source="sent_to_email", allow_blank=True)
+    totalPaid = serializers.IntegerField(source="total_paid")
+    paymentMethod = serializers.CharField(source="payment_method")
+    paymentReference = serializers.CharField(source="payment_reference", allow_blank=True)
+    createdAt = serializers.DateTimeField(source="created_at")
+    updatedAt = serializers.DateTimeField(source="updated_at")
+
+    class Meta:
+        model = Receipt
+        fields = (
+            "id",
+            "receiptNumber",
+            "status",
+            "paymentTransactionId",
+            "issuedAt",
+            "sentAt",
+            "sentToEmail",
+            "totalPaid",
+            "currency",
+            "paymentMethod",
+            "paymentReference",
+            "createdAt",
+            "updatedAt",
+        )
+
+    def get_paymentTransactionId(self, obj: Receipt) -> str | None:
+        if obj.payment_transaction_id is None:
+            return None
+
+        return str(obj.payment_transaction_id)
 
 
 class SasaPayPaymentResponseSerializer(serializers.Serializer):

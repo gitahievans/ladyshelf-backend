@@ -2,7 +2,7 @@ from django.contrib import admin
 
 from common.admin_mixins import AttendantRestrictedFieldsMixin, ReadOnlyInlineMixin
 from common.admin_roles import is_attendant, is_owner
-from orders.models import Order, OrderItem
+from orders.models import Order, OrderCancellation, OrderCancellationItem, OrderItem
 
 
 class OrderItemInline(ReadOnlyInlineMixin, admin.TabularInline):
@@ -11,6 +11,7 @@ class OrderItemInline(ReadOnlyInlineMixin, admin.TabularInline):
         "product",
         "variant_id",
         "quantity",
+        "cancelled_quantity",
         "product_name",
         "product_image",
         "price",
@@ -86,13 +87,14 @@ class OrderAdmin(AttendantRestrictedFieldsMixin, admin.ModelAdmin):
 
 @admin.register(OrderItem)
 class OrderItemAdmin(admin.ModelAdmin):
-    list_display = ("order", "product_name", "quantity", "price", "size", "color")
+    list_display = ("order", "product_name", "quantity", "cancelled_quantity", "price", "size", "color")
     search_fields = ("order__order_number", "product_name", "variant_id")
     readonly_fields = (
         "order",
         "product",
         "variant_id",
         "quantity",
+        "cancelled_quantity",
         "product_name",
         "product_image",
         "price",
@@ -112,3 +114,26 @@ class OrderItemAdmin(admin.ModelAdmin):
 
     def has_delete_permission(self, request, obj=None):
         return False
+
+
+class OrderCancellationItemInline(ReadOnlyInlineMixin, admin.TabularInline):
+    model = OrderCancellationItem
+    readonly_fields = ("order_item", "quantity", "unit_price", "line_total", "created_at")
+
+
+@admin.register(OrderCancellation)
+class OrderCancellationAdmin(admin.ModelAdmin):
+    list_display = ("order", "customer", "source", "reason", "created_at")
+    list_filter = ("source", "reason", "created_at")
+    search_fields = ("order__order_number", "customer__email")
+    readonly_fields = ("order", "customer", "source", "reason", "note", "created_at")
+    inlines = [OrderCancellationItemInline]
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        return is_owner(request.user)

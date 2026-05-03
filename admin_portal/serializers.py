@@ -12,7 +12,7 @@ from checkout.serializers import DeliverySettingsSerializer
 from orders.models import Order
 from orders.serializers import OrderItemSerializer, OrderSerializer
 from payments.models import PaymentTransaction
-from payments.serializers import PaymentTransactionSerializer
+from payments.serializers import PaymentTransactionSerializer, ReceiptSerializer
 from wishlist.models import WishlistItem
 
 
@@ -187,12 +187,14 @@ class AdminOrderDetailSerializer(OrderSerializer):
         read_only=True,
         source="payment_transactions",
     )
+    receipt = ReceiptSerializer(read_only=True)
 
     class Meta(OrderSerializer.Meta):
         fields = (
             *OrderSerializer.Meta.fields,
             "internalNotes",
             "paymentTransactions",
+            "receipt",
         )
 
 
@@ -216,6 +218,16 @@ class AdminOrderUpdateSerializer(serializers.ModelSerializer):
     class Meta:
         model = Order
         fields = ("orderStatus", "paymentStatus", "internalNotes")
+
+
+class AdminManualPaymentSerializer(serializers.Serializer):
+    amountCollected = serializers.IntegerField(required=False, min_value=1)
+    paymentMethod = serializers.ChoiceField(
+        choices=Order.PaymentMethod.choices,
+        default=Order.PaymentMethod.MPESA,
+    )
+    paymentReference = serializers.CharField(required=False, allow_blank=True, max_length=120)
+    staffNote = serializers.CharField(required=False, allow_blank=True)
 
 
 class AdminPaymentListItemSerializer(serializers.ModelSerializer):

@@ -1,0 +1,32 @@
+Receipt {{ receipt_number }}
+
+Hello {{ customer_name }},
+
+{{ intro }}
+
+Order: {{ order.order_number }}
+Payment: {{ payment_method_label }}
+Reference: {{ payment_reference }}
+Total paid: {{ total_paid_label }}
+
+Items:
+{% for item in items %}- {{ item.name }} ({{ item.size }} / {{ item.color }}) x{{ item.quantity }} - {{ item.line_total }}
+{% endfor %}
+
+Subtotal: {{ subtotal_label }}
+Delivery: {{ delivery_fee_label }}
+Total paid: {{ total_paid_label }}
+
+{% if is_pickup %}
+Pickup details:
+{{ pickup_instructions.streetAddress }}
+{{ pickup_instructions.town }}, {{ pickup_instructions.county }}
+Collect within {{ pickup_instructions.collectionWindowHours }} hours after confirmation.
+{% else %}
+Delivery details:
+{{ delivery_details.streetAddress }}
+{{ delivery_details.town }}, {{ delivery_details.county }}
+{{ customer_phone }}
+{% endif %}
+
+Thank you for shopping with Wahi Fashion.

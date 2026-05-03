@@ -5,7 +5,7 @@ from rest_framework.test import APIClient
 
 from customers.models import CustomerProfile
 from orders.models import Order
-from payments.models import PaymentTransaction
+from payments.models import PaymentTransaction, Receipt
 
 
 @override_settings(
@@ -143,6 +143,13 @@ class SasaPayPaymentTests(TestCase):
         self.assertEqual(self.order.order_status, "paid")
         self.assertEqual(transaction_record.status, "paid")
         self.assertEqual(len(mail.outbox), 2)
+        self.assertEqual(Receipt.objects.filter(order=self.order).count(), 1)
+        receipt = Receipt.objects.get(order=self.order)
+        self.assertEqual(receipt.status, Receipt.Status.SENT)
+        self.assertEqual(receipt.payment_transaction, transaction_record)
+        self.assertTrue(
+            any(receipt.receipt_number in message.subject for message in mail.outbox)
+        )
 
     @patch("payments.services._request_sasapay")
     def test_status_sync_keeps_payment_pending_without_definitive_confirmation(self, mock_request):

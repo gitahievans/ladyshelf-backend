@@ -4,7 +4,7 @@ from django.conf import settings
 from django.core.mail import EmailMultiAlternatives
 from django.template.loader import render_to_string
 
-from orders.models import Order
+from orders.models import Order, OrderCancellation
 
 
 @dataclass(frozen=True)
@@ -92,6 +92,35 @@ def build_order_context(order: Order, *, headline: str, intro: str) -> dict:
         "is_parcel": order.delivery_mode == Order.DeliveryMode.PARCEL,
         "is_paid": order.payment_status == Order.PaymentStatus.PAID,
         "needs_manual_delivery_fee": order.manual_delivery_fee_confirmation_required,
+    }
+
+
+def build_cancellation_context(cancellation: OrderCancellation) -> dict:
+    order = cancellation.order
+    cancelled_items = [
+        {
+            "name": item.order_item.product_name,
+            "quantity": item.quantity,
+            "unit_price": format_money(item.unit_price, order.currency),
+            "line_total": format_money(item.line_total, order.currency),
+        }
+        for item in cancellation.items.select_related("order_item").all()
+    ]
+    cancelled_total = sum(item.line_total for item in cancellation.items.all())
+
+    return {
+        **build_order_context(
+            order,
+            headline="Cancellation confirmed.",
+            intro=(
+                f"we have cancelled the selected item(s) from order {order.order_number}. "
+                "Your updated order details are below."
+            ),
+        ),
+        "cancellation": cancellation,
+        "cancelled_items": cancelled_items,
+        "cancelled_total_label": format_money(cancelled_total, order.currency),
+        "reason_label": cancellation.get_reason_display(),
     }
 
 

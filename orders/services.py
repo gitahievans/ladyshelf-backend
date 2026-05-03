@@ -15,11 +15,31 @@ from checkout.services import (
     validate_payment_selection,
 )
 from customers.models import CustomerProfile
-from notifications.services import send_order_created_notifications
+from notifications.services import (
+    send_order_cancellation_notifications,
+    send_order_created_notifications,
+)
 from orders.expiry import get_payment_expiry_deadline
-from orders.models import Order, OrderItem
+from orders.models import Order, OrderCancellation, OrderCancellationItem, OrderItem
 
 logger = logging.getLogger(__name__)
+
+
+def get_order_cancellation_unavailable_reason(order: Order) -> str:
+    if order.payment_timing != Order.PaymentTiming.PAY_ON_DELIVERY:
+        return "Only pay-on-delivery orders can be cancelled online."
+
+    if order.order_status != Order.OrderStatus.NEW:
+        return "This order is already being prepared or has moved to dispatch."
+
+    if not any(item.quantity > item.cancelled_quantity for item in order.items.all()):
+        return "Every item in this order has already been cancelled."
+
+    return ""
+
+
+def can_cancel_order(order: Order) -> bool:
+    return get_order_cancellation_unavailable_reason(order) == ""
 
 
 def build_checkout_quote_data(
@@ -230,3 +250,110 @@ def _send_notifications_safely(order_id: int) -> None:
         send_order_created_notifications(order)
     except Exception:  # pragma: no cover - notification failures should not break checkout
         logger.exception("Failed to send order notifications for order %s", order_id)
+
+
+@transaction.atomic
+def cancel_order_items(
+    *,
+    order: Order,
+    customer: CustomerProfile,
+    cancellation_items: list[dict],
+    reason: str,
+    note: str = "",
+) -> Order:
+    locked_order = (
+        Order.objects.select_for_update()
+        .select_related("customer")
+        .prefetch_related("items", "items__product")
+        .get(pk=order.pk, customer=customer)
+    )
+    unavailable_reason = get_order_cancellation_unavailable_reason(locked_order)
+    if unavailable_reason:
+        raise ValidationError({"detail": unavailable_reason})
+
+    quantity_by_item_id: dict[int, int] = {}
+    for cancellation_item in cancellation_items:
+        order_item_id = int(cancellation_item["orderItemId"])
+        quantity = int(cancellation_item["quantity"])
+        quantity_by_item_id[order_item_id] = quantity_by_item_id.get(order_item_id, 0) + quantity
+
+    locked_items = {
+        item.pk: item
+        for item in OrderItem.objects.select_for_update().filter(
+            order=locked_order,
+            pk__in=quantity_by_item_id.keys(),
+        )
+    }
+    if len(locked_items) != len(quantity_by_item_id):
+        raise ValidationError({"items": "One or more selected order items could not be found."})
+
+    cancellation = OrderCancellation.objects.create(
+        order=locked_order,
+        customer=customer,
+        source=OrderCancellation.Source.CUSTOMER,
+        reason=reason,
+        note=note.strip(),
+    )
+
+    for order_item_id, quantity in quantity_by_item_id.items():
+        if quantity < 1:
+            raise ValidationError({"items": "Cancellation quantity must be at least 1."})
+
+        order_item = locked_items[order_item_id]
+        remaining_quantity = order_item.quantity - order_item.cancelled_quantity
+        if quantity > remaining_quantity:
+            raise ValidationError(
+                {
+                    "items": (
+                        f"Only {remaining_quantity} piece(s) can still be cancelled "
+                        f"for {order_item.product_name}."
+                    )
+                }
+            )
+
+        order_item.cancelled_quantity += quantity
+        order_item.save(update_fields=["cancelled_quantity", "updated_at"])
+        OrderCancellationItem.objects.create(
+            cancellation=cancellation,
+            order_item=order_item,
+            quantity=quantity,
+            unit_price=order_item.price,
+            line_total=order_item.price * quantity,
+        )
+
+        variant = ProductVariant.objects.select_for_update().filter(
+            external_id=order_item.variant_id,
+        ).first()
+        if variant:
+            variant.stock += quantity
+            variant.save(update_fields=["stock", "updated_at"])
+
+    locked_order.refresh_from_db()
+    current_items = OrderItem.objects.filter(order=locked_order)
+    active_subtotal = sum(
+        item.price * max(item.quantity - item.cancelled_quantity, 0)
+        for item in current_items
+    )
+    all_items_cancelled = active_subtotal == 0
+    locked_order.subtotal = active_subtotal
+    locked_order.delivery_fee = 0 if all_items_cancelled else locked_order.delivery_fee
+    locked_order.total = max(0, locked_order.subtotal + locked_order.delivery_fee - locked_order.discount)
+    if all_items_cancelled:
+        locked_order.order_status = Order.OrderStatus.CANCELLED
+
+    locked_order.save(
+        update_fields=[
+            "subtotal",
+            "delivery_fee",
+            "total",
+            "order_status",
+            "updated_at",
+        ]
+    )
+    transaction.on_commit(lambda: send_order_cancellation_notifications(cancellation.pk))
+
+    return (
+        Order.objects.select_related("customer")
+        .prefetch_related("items", "items__product", "cancellations", "cancellations__items", "cancellations__items__order_item")
+        .get(pk=locked_order.pk)
+    )

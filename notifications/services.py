@@ -2,12 +2,14 @@ import logging
 
 from notifications.email_templates import (
     BRAND_CONTEXT,
+    build_cancellation_context,
     build_order_context,
     get_customer_email,
     get_staff_emails,
     send_templated_email,
 )
-from orders.models import Order
+from orders.models import Order, OrderCancellation
+from payments.receipts import issue_receipt_for_paid_order
 
 logger = logging.getLogger(__name__)
 
@@ -48,23 +50,13 @@ def send_order_created_notifications(order: Order) -> None:
 
 
 def send_order_paid_notifications(order: Order) -> None:
-    customer_email = get_customer_email(order)
     staff_emails = get_staff_emails()
+    payment_transaction = order.payment_transactions.filter(status="paid").first()
 
-    if customer_email:
-        send_templated_email(
-            subject=f"Payment confirmed: {order.order_number}",
-            template_name="order_customer",
-            context=build_order_context(
-                order,
-                headline="Payment confirmed.",
-                intro=(
-                    f"payment for your Wahi Fashion order {order.order_number} has been "
-                    "confirmed. Your order is now with the store team."
-                ),
-            ),
-            recipients=[customer_email],
-        )
+    issue_receipt_for_paid_order(
+        order=order,
+        payment_transaction=payment_transaction,
+    )
 
     if staff_emails:
         send_templated_email(
@@ -115,6 +107,41 @@ def send_payment_status_notification(order_id: int) -> None:
         recipients=[customer_email],
     )
     logger.info("Payment status email sent for order %s", order.order_number)
+
+
+def send_order_cancellation_notifications(cancellation_id: int) -> None:
+    try:
+        cancellation = (
+            OrderCancellation.objects.select_related("order", "order__customer", "customer")
+            .prefetch_related("items", "items__order_item", "order__items")
+            .get(pk=cancellation_id)
+        )
+    except OrderCancellation.DoesNotExist:
+        logger.warning("Cancellation notification skipped because cancellation %s no longer exists", cancellation_id)
+        return
+
+    order = cancellation.order
+    customer_email = get_customer_email(order)
+    staff_emails = get_staff_emails()
+    context = build_cancellation_context(cancellation)
+
+    if customer_email:
+        send_templated_email(
+            subject=f"Wahi Fashion cancellation confirmed: {order.order_number}",
+            template_name="order_cancellation_customer",
+            context=context,
+            recipients=[customer_email],
+        )
+
+    if staff_emails:
+        send_templated_email(
+            subject=f"Order item cancellation: {order.order_number}",
+            template_name="order_cancellation_staff",
+            context=context,
+            recipients=staff_emails,
+        )
+
+    logger.info("Cancellation notifications queued for order %s", order.order_number)
 
 
 def send_account_created_notification(*, email: str, customer_name: str) -> None:

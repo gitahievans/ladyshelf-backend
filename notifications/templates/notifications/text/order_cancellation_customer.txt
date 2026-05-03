@@ -1,0 +1,16 @@
+Order {{ order.order_number }}
+
+Hello {{ customer_name }},
+
+Your cancellation has been confirmed.
+
+Cancelled items:
+{% for item in cancelled_items %}- {{ item.name }} x{{ item.quantity }} - {{ item.line_total }}
+{% endfor %}
+Reason: {{ reason_label }}
+Cancelled amount: {{ cancelled_total_label }}
+
+Updated order total: {{ total_label }}
+Order status: {{ order_status_label }}
+
+Thank you for shopping with Wahi Fashion.

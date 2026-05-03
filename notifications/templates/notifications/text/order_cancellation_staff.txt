@@ -1,0 +1,12 @@
+Order {{ order.order_number }} cancellation
+
+Customer: {{ customer_email }}
+Reason: {{ reason_label }}
+Note: {{ cancellation.note|default:"None" }}
+
+Cancelled items:
+{% for item in cancelled_items %}- {{ item.name }} x{{ item.quantity }} - {{ item.line_total }}
+{% endfor %}
+
+Updated total: {{ total_label }}
+Order status: {{ order_status_label }}

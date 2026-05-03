@@ -96,6 +96,7 @@ class OrderItem(models.Model):
     )
     variant_id = models.CharField(max_length=50)
     quantity = models.PositiveIntegerField(default=1)
+    cancelled_quantity = models.PositiveIntegerField(default=0)
     product_name = models.CharField(max_length=255)
     product_image = models.URLField()
     price = models.PositiveIntegerField()
@@ -111,3 +112,63 @@ class OrderItem(models.Model):
 
     def __str__(self) -> str:
         return f"{self.order.order_number} - {self.product_name}"
+
+
+class OrderCancellation(models.Model):
+    class Reason(models.TextChoices):
+        ORDERED_BY_MISTAKE = "ordered_by_mistake", "Ordered by mistake"
+        CHANGED_MIND = "changed_mind", "Changed my mind"
+        WRONG_SIZE_OR_COLOR = "wrong_size_or_color", "Need a different size or color"
+        DELIVERY_TIMING = "delivery_timing", "Delivery timing no longer works"
+        FOUND_ANOTHER_OPTION = "found_another_option", "Found another option"
+        OTHER = "other", "Other"
+
+    class Source(models.TextChoices):
+        CUSTOMER = "customer", "Customer"
+        STAFF = "staff", "Staff"
+
+    order = models.ForeignKey(
+        Order,
+        on_delete=models.CASCADE,
+        related_name="cancellations",
+    )
+    customer = models.ForeignKey(
+        "customers.CustomerProfile",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="order_cancellations",
+    )
+    source = models.CharField(max_length=20, choices=Source.choices, default=Source.CUSTOMER)
+    reason = models.CharField(max_length=40, choices=Reason.choices)
+    note = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at", "-id"]
+
+    def __str__(self) -> str:
+        return f"{self.order.order_number} cancellation"
+
+
+class OrderCancellationItem(models.Model):
+    cancellation = models.ForeignKey(
+        OrderCancellation,
+        on_delete=models.CASCADE,
+        related_name="items",
+    )
+    order_item = models.ForeignKey(
+        OrderItem,
+        on_delete=models.CASCADE,
+        related_name="cancellation_items",
+    )
+    quantity = models.PositiveIntegerField()
+    unit_price = models.PositiveIntegerField()
+    line_total = models.PositiveIntegerField()
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["created_at", "id"]
+
+    def __str__(self) -> str:
+        return f"{self.order_item.product_name} x{self.quantity}"

@@ -1,0 +1,98 @@
+{% extends "notifications/email/base.html" %}
+
+{% block content %}
+  <p style="margin:0 0 10px; color:#D4A853; font-size:12px; line-height:1.5; letter-spacing:0.18em; text-transform:uppercase;">
+    Receipt {{ receipt_number }}
+  </p>
+  <h1 style="margin:0; color:#1A1009; font-family:Georgia, 'Times New Roman', serif; font-size:36px; line-height:1.15; font-weight:500;">
+    {{ headline }}
+  </h1>
+  <p style="margin:18px 0 0; color:#5C3D1E; font-size:16px; line-height:1.7;">
+    Hello {{ customer_name }}, {{ intro }}
+  </p>
+
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin:28px 0; border:1px solid #E0D5C5; background:#FAF6F0;">
+    <tr>
+      <td style="padding:18px; width:50%; vertical-align:top;">
+        <p style="margin:0; color:#9C7E5F; font-size:12px; letter-spacing:0.14em; text-transform:uppercase;">Order</p>
+        <p style="margin:6px 0 0; color:#1A1009; font-size:16px; line-height:1.5;">{{ order.order_number }}</p>
+      </td>
+      <td style="padding:18px; width:50%; vertical-align:top;">
+        <p style="margin:0; color:#9C7E5F; font-size:12px; letter-spacing:0.14em; text-transform:uppercase;">Paid</p>
+        <p style="margin:6px 0 0; color:#1A1009; font-size:16px; line-height:1.5;">{{ total_paid_label }}</p>
+      </td>
+    </tr>
+    <tr>
+      <td style="padding:0 18px 18px; width:50%; vertical-align:top;">
+        <p style="margin:0; color:#9C7E5F; font-size:12px; letter-spacing:0.14em; text-transform:uppercase;">Payment</p>
+        <p style="margin:6px 0 0; color:#1A1009; font-size:15px; line-height:1.5;">{{ payment_method_label }}</p>
+      </td>
+      <td style="padding:0 18px 18px; width:50%; vertical-align:top;">
+        <p style="margin:0; color:#9C7E5F; font-size:12px; letter-spacing:0.14em; text-transform:uppercase;">Reference</p>
+        <p style="margin:6px 0 0; color:#1A1009; font-size:15px; line-height:1.5;">{{ payment_reference }}</p>
+      </td>
+    </tr>
+  </table>
+
+  <h2 style="margin:0 0 14px; color:#1A1009; font-family:Georgia, 'Times New Roman', serif; font-size:24px; line-height:1.2; font-weight:500;">Your pieces</h2>
+  {% for item in items %}
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="border-top:1px solid #E0D5C5;">
+      <tr>
+        <td style="padding:16px 0; vertical-align:top;">
+          <p style="margin:0; color:#1A1009; font-size:15px; line-height:1.5; font-weight:600;">{{ item.name }}</p>
+          <p style="margin:5px 0 0; color:#5C3D1E; font-size:13px; line-height:1.5;">{{ item.size }} / {{ item.color }} &middot; Qty {{ item.quantity }}</p>
+        </td>
+        <td align="right" style="padding:16px 0; color:#1A1009; font-size:14px; line-height:1.5; white-space:nowrap;">{{ item.line_total }}</td>
+      </tr>
+    </table>
+  {% endfor %}
+
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin-top:18px; border-top:1px solid #E0D5C5;">
+    <tr>
+      <td style="padding-top:16px; color:#5C3D1E; font-size:14px;">Subtotal</td>
+      <td align="right" style="padding-top:16px; color:#1A1009; font-size:14px;">{{ subtotal_label }}</td>
+    </tr>
+    <tr>
+      <td style="padding-top:8px; color:#5C3D1E; font-size:14px;">Delivery</td>
+      <td align="right" style="padding-top:8px; color:#1A1009; font-size:14px;">{{ delivery_fee_label }}</td>
+    </tr>
+    {% if has_discount %}
+      <tr>
+        <td style="padding-top:8px; color:#5C3D1E; font-size:14px;">Discount</td>
+        <td align="right" style="padding-top:8px; color:#1A1009; font-size:14px;">{{ discount_label }}</td>
+      </tr>
+    {% endif %}
+    <tr>
+      <td style="padding-top:14px; color:#1A1009; font-size:17px; font-weight:700;">Total paid</td>
+      <td align="right" style="padding-top:14px; color:#1A1009; font-size:17px; font-weight:700;">{{ total_paid_label }}</td>
+    </tr>
+  </table>
+
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin-top:28px; background:#1A1009;">
+    <tr>
+      <td style="padding:22px;">
+        <h2 style="margin:0; color:#FAF6F0; font-family:Georgia, 'Times New Roman', serif; font-size:23px; line-height:1.25; font-weight:500;">
+          {% if is_pickup %}Pickup details{% else %}Delivery details{% endif %}
+        </h2>
+        {% if is_pickup %}
+          <p style="margin:12px 0 0; color:#F2EAD8; font-size:14px; line-height:1.7;">
+            {{ pickup_instructions.streetAddress }}<br>
+            {{ pickup_instructions.town }}, {{ pickup_instructions.county }}<br>
+            {{ pickup_instructions.openingHours }}<br>
+            Collect within {{ pickup_instructions.collectionWindowHours }} hours after confirmation.
+          </p>
+        {% else %}
+          <p style="margin:12px 0 0; color:#F2EAD8; font-size:14px; line-height:1.7;">
+            {{ delivery_details.streetAddress }}<br>
+            {{ delivery_details.town }}, {{ delivery_details.county }}<br>
+            {{ customer_phone }}
+          </p>
+        {% endif %}
+      </td>
+    </tr>
+  </table>
+
+  <p style="margin:28px 0 0; color:#5C3D1E; font-size:14px; line-height:1.7;">
+    We are grateful you chose Wahi Fashion. Keep this receipt for your records, and reply to this email if you need help with your order.
+  </p>
+{% endblock %}

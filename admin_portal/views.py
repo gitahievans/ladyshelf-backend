@@ -1,4 +1,6 @@
+from django.db import transaction
 from django.db.models import Count, Q
+from django.shortcuts import get_object_or_404
 from rest_framework import generics, status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
@@ -18,6 +20,7 @@ from admin_portal.serializers import (
     AdminDeliveryZoneSerializer,
     AdminDeliverySettingsSerializer,
     AdminInventoryRowSerializer,
+    AdminManualPaymentSerializer,
     AdminOrderDetailSerializer,
     AdminOrderListItemSerializer,
     AdminOrderUpdateSerializer,
@@ -35,6 +38,7 @@ from admin_portal.serializers import (
 )
 from customers.models import CustomerProfile
 from orders.models import Order
+from payments.receipts import issue_receipt_for_paid_order, resend_receipt_for_order
 from payments.models import PaymentTransaction
 
 
@@ -227,7 +231,14 @@ class AdminOrderDetailView(generics.RetrieveUpdateAPIView):
     def get_queryset(self):
         return (
             Order.objects.select_related("customer")
-            .prefetch_related("items", "items__product", "payment_transactions")
+            .prefetch_related(
+                "items",
+                "items__product",
+                "payment_transactions",
+                "cancellations",
+                "cancellations__items",
+                "cancellations__items__order_item",
+            )
             .all()
         )
 
@@ -242,6 +253,96 @@ class AdminOrderDetailView(generics.RetrieveUpdateAPIView):
         serializer = AdminOrderDetailSerializer(self.get_object())
         response.data = serializer.data
         return response
+
+
+class AdminOrderMarkPaidView(APIView):
+    permission_classes = [IsAuthenticated, IsAdminStaff]
+    throttle_scope = "admin"
+
+    @transaction.atomic
+    def post(self, request, order_number):
+        input_serializer = AdminManualPaymentSerializer(data=request.data)
+        input_serializer.is_valid(raise_exception=True)
+        validated_data = input_serializer.validated_data
+
+        order = get_object_or_404(
+            Order.objects.select_for_update()
+            .select_related("customer")
+            .prefetch_related("items", "items__product", "payment_transactions"),
+            order_number=order_number,
+        )
+
+        if order.payment_timing != Order.PaymentTiming.PAY_ON_DELIVERY:
+            return Response(
+                {"detail": "Only pay-on-delivery orders can be manually marked as paid."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if order.payment_status == Order.PaymentStatus.PAID:
+            return Response(
+                {"detail": "This order has already been marked as paid."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if order.order_status == Order.OrderStatus.CANCELLED or order.total <= 0:
+            return Response(
+                {"detail": "Cancelled orders cannot be marked as paid."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        amount_collected = validated_data.get("amountCollected") or order.total
+        payment_reference = validated_data.get("paymentReference", "").strip()
+        staff_note = validated_data.get("staffNote", "").strip()
+        payment_method = validated_data.get("paymentMethod", order.payment_method)
+
+        order.payment_method = payment_method
+        order.payment_status = Order.PaymentStatus.PAID
+        order.order_status = Order.OrderStatus.PAID
+        order.payment_expires_at = None
+        if staff_note:
+            note = f"Manual payment confirmed: {staff_note}"
+            order.internal_notes = (
+                f"{order.internal_notes.rstrip()}\n{note}"
+                if order.internal_notes.strip()
+                else note
+            )
+        order.save(
+            update_fields=[
+                "payment_method",
+                "payment_status",
+                "order_status",
+                "payment_expires_at",
+                "internal_notes",
+                "updated_at",
+            ]
+        )
+
+        issue_receipt_for_paid_order(
+            order=order,
+            payment_reference=payment_reference,
+            total_paid=amount_collected,
+            created_by=request.user,
+        )
+
+        order.refresh_from_db()
+        serializer = AdminOrderDetailSerializer(order)
+        return Response(serializer.data)
+
+
+class AdminOrderReceiptResendView(APIView):
+    permission_classes = [IsAuthenticated, IsAdminStaff]
+    throttle_scope = "admin"
+
+    def post(self, request, order_number):
+        order = get_object_or_404(
+            Order.objects.select_related("customer")
+            .prefetch_related("items", "items__product", "payment_transactions"),
+            order_number=order_number,
+        )
+        resend_receipt_for_order(order)
+        order.refresh_from_db()
+        serializer = AdminOrderDetailSerializer(order)
+        return Response(serializer.data)
 
 
 class AdminPaymentListView(generics.ListAPIView):

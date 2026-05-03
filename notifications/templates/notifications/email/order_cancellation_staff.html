@@ -1,0 +1,38 @@
+{% extends "notifications/email/base.html" %}
+
+{% block content %}
+  <p style="margin:0 0 10px; color:#D4A853; font-size:12px; line-height:1.5; letter-spacing:0.18em; text-transform:uppercase;">
+    Order {{ order.order_number }}
+  </p>
+  <h1 style="margin:0; color:#1A1009; font-family:Georgia, 'Times New Roman', serif; font-size:36px; line-height:1.15; font-weight:500;">
+    Item cancellation.
+  </h1>
+  <p style="margin:18px 0 0; color:#5C3D1E; font-size:16px; line-height:1.7;">
+    A customer cancelled item(s) from this pay-on-delivery order.
+  </p>
+
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin:28px 0; border:1px solid #E0D5C5; background:#FAF6F0;">
+    <tr>
+      <td style="padding:18px;">
+        <p style="margin:0; color:#9C7E5F; font-size:12px; letter-spacing:0.14em; text-transform:uppercase;">Customer</p>
+        <p style="margin:6px 0 0; color:#1A1009; font-size:16px; line-height:1.5;">{{ customer_email }}</p>
+        <p style="margin:12px 0 0; color:#9C7E5F; font-size:12px; letter-spacing:0.14em; text-transform:uppercase;">Reason</p>
+        <p style="margin:6px 0 0; color:#1A1009; font-size:16px; line-height:1.5;">{{ reason_label }}</p>
+      </td>
+    </tr>
+  </table>
+
+  {% for item in cancelled_items %}
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="border-top:1px solid #E0D5C5;">
+      <tr>
+        <td style="padding:16px 0; color:#1A1009; font-size:15px; line-height:1.5; font-weight:600;">{{ item.name }} x{{ item.quantity }}</td>
+        <td align="right" style="padding:16px 0; color:#1A1009; font-size:14px; line-height:1.5; white-space:nowrap;">{{ item.line_total }}</td>
+      </tr>
+    </table>
+  {% endfor %}
+
+  <p style="margin:22px 0 0; color:#5C3D1E; font-size:14px; line-height:1.7;">
+    Updated order total: <strong style="color:#1A1009;">{{ total_label }}</strong><br>
+    Order status: <strong style="color:#1A1009;">{{ order_status_label }}</strong>
+  </p>
+{% endblock %}

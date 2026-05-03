@@ -1,3 +1,4 @@
+from django.core import mail
 from django.test import TestCase
 from rest_framework.test import APIClient
 
@@ -5,7 +6,7 @@ from admin_portal.models import AdminStaffAccess
 from catalog.models import Product, ProductVariant
 from customers.models import CustomerProfile
 from orders.models import Order
-from payments.models import PaymentTransaction
+from payments.models import PaymentTransaction, Receipt
 from wishlist.models import WishlistItem
 from checkout.models import DeliverySettings, PickupLocation
 
@@ -338,6 +339,88 @@ class AdminOrderPaymentCustomerTests(TestCase):
         self.assertEqual(self.order.order_status, Order.OrderStatus.READY_FOR_DISPATCH)
         self.assertEqual(self.order.payment_status, Order.PaymentStatus.PAID)
         self.assertEqual(self.order.internal_notes, "Confirmed manually by owner.")
+
+    def test_staff_can_mark_pay_on_delivery_order_paid_and_issue_receipt(self):
+        pod_order = Order.objects.create(
+            customer=self.customer,
+            order_number="WF-2026-81002",
+            delivery_details={
+                "deliveryMethod": "delivery",
+                "fullName": "Nia Achieng",
+                "phone": "+254711222333",
+                "streetAddress": "Lumumba Drive",
+                "town": "Roysambu",
+                "county": "Nairobi",
+            },
+            subtotal=2000,
+            delivery_fee=200,
+            discount=0,
+            total=2200,
+            currency="KES",
+            payment_method="mpesa",
+            payment_status=Order.PaymentStatus.MANUAL_ON_DELIVERY,
+            payment_timing=Order.PaymentTiming.PAY_ON_DELIVERY,
+            delivery_mode=Order.DeliveryMode.RIDER,
+            order_status=Order.OrderStatus.NEW,
+        )
+        self.authenticate_owner()
+
+        with self.captureOnCommitCallbacks(execute=True):
+            response = self.client.post(
+                "/api/v1/admin/orders/WF-2026-81002/mark-paid",
+                {
+                    "amountCollected": 2200,
+                    "paymentMethod": "mpesa",
+                    "paymentReference": "POD-MPESA-001",
+                    "staffNote": "Collected by rider.",
+                },
+                format="json",
+            )
+
+        self.assertEqual(response.status_code, 200)
+        pod_order.refresh_from_db()
+        receipt = Receipt.objects.get(order=pod_order)
+        self.assertEqual(pod_order.payment_status, Order.PaymentStatus.PAID)
+        self.assertEqual(receipt.payment_reference, "POD-MPESA-001")
+        self.assertEqual(receipt.status, Receipt.Status.SENT)
+        self.assertIn("receipt", response.json())
+        self.assertEqual(len(mail.outbox), 1)
+        self.assertIn(receipt.receipt_number, mail.outbox[0].subject)
+
+    def test_mark_paid_rejects_prepaid_order(self):
+        self.authenticate_owner()
+
+        response = self.client.post(
+            "/api/v1/admin/orders/WF-2026-81001/mark-paid",
+            {
+                "amountCollected": 1300,
+                "paymentMethod": "mpesa",
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertFalse(Receipt.objects.filter(order=self.order).exists())
+
+    def test_staff_can_resend_existing_receipt(self):
+        self.order.payment_status = Order.PaymentStatus.PAID
+        self.order.save(update_fields=["payment_status", "updated_at"])
+        receipt = Receipt.objects.create(
+            order=self.order,
+            receipt_number="WAHI-RCPT-2026-81001",
+            total_paid=self.order.total,
+            currency=self.order.currency,
+            payment_method=self.order.payment_method,
+            payment_reference="TXN-81001",
+        )
+        self.authenticate_owner()
+
+        response = self.client.post("/api/v1/admin/orders/WF-2026-81001/receipt/resend")
+
+        self.assertEqual(response.status_code, 200)
+        receipt.refresh_from_db()
+        self.assertEqual(receipt.status, Receipt.Status.SENT)
+        self.assertEqual(len(mail.outbox), 1)
 
     def test_staff_can_list_and_view_payments(self):
         self.authenticate_owner()

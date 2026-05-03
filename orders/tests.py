@@ -1,14 +1,15 @@
 from datetime import timedelta
 
 from django.core.management import call_command
-from django.test import TestCase
+from django.core import mail
+from django.test import TestCase, override_settings
 from django.utils import timezone
 from rest_framework.test import APIClient
 
 from catalog.models import Product, ProductVariant
 from customers.models import CustomerProfile
 from orders.expiry import expire_unpaid_prepay_orders
-from orders.models import Order, OrderItem
+from orders.models import Order, OrderCancellation, OrderItem
 from payments.models import PaymentTransaction
 
 
@@ -195,3 +196,196 @@ class PrepaidOrderExpiryTests(TestCase):
         pod_order.refresh_from_db()
         self.assertEqual(paid_order.order_status, "paid")
         self.assertEqual(pod_order.order_status, "new")
+
+
+@override_settings(
+    EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend",
+    DEFAULT_FROM_EMAIL="orders@wahifashion.com",
+    ORDER_NOTIFICATION_STAFF_EMAILS=["studio@wahifashion.com"],
+)
+class PayOnDeliveryCancellationTests(TestCase):
+    def setUp(self):
+        self.client = APIClient()
+        self.customer = CustomerProfile.objects.create(
+            supabase_user_id="cancel-user-1",
+            email="cancel@example.com",
+            first_name="Akinyi",
+            last_name="Otieno",
+        )
+        self.other_customer = CustomerProfile.objects.create(
+            supabase_user_id="cancel-user-2",
+            email="other@example.com",
+            first_name="Moraa",
+            last_name="Achieng",
+        )
+        self.product = Product.objects.get(slug="obsidian-power-blazer")
+        self.variant = ProductVariant.objects.filter(product=self.product).first()
+        self.variant.stock = 2
+        self.variant.save(update_fields=["stock", "updated_at"])
+
+    def create_pay_on_delivery_order(self, *, quantity: int = 3, status: str = "new") -> Order:
+        order = Order.objects.create(
+            customer=self.customer,
+            order_number=f"WF-2026-CAN{quantity}{status[:2].upper()}",
+            delivery_details={
+                "fullName": "Akinyi Otieno",
+                "email": "cancel@example.com",
+                "phone": "+254700000000",
+                "county": "Nairobi",
+                "town": "Westlands",
+                "streetAddress": "Rhapta Road",
+                "deliveryMethod": "delivery",
+            },
+            subtotal=self.product.price * quantity,
+            delivery_fee=300,
+            discount=0,
+            total=(self.product.price * quantity) + 300,
+            currency="KES",
+            payment_method="mpesa",
+            payment_status="manual_on_delivery",
+            payment_timing="pay_on_delivery",
+            delivery_mode="rider",
+            order_status=status,
+        )
+        OrderItem.objects.create(
+            order=order,
+            product=self.product,
+            variant_id=self.variant.external_id,
+            quantity=quantity,
+            product_name=self.product.name,
+            product_image=self.product.images[0],
+            price=self.product.price,
+            currency=self.product.currency,
+            size=self.variant.size,
+            color=self.variant.color,
+            color_hex=self.variant.color_hex,
+        )
+        return order
+
+    def test_customer_can_cancel_part_of_item_and_stock_is_restored(self):
+        order = self.create_pay_on_delivery_order(quantity=3)
+        item = order.items.first()
+        self.client.force_authenticate(user=self.customer)
+
+        with self.captureOnCommitCallbacks(execute=True):
+            response = self.client.post(
+                f"/api/v1/account/orders/{order.order_number}/cancellations",
+                {
+                    "items": [{"orderItemId": item.pk, "quantity": 1}],
+                    "reason": "wrong_size_or_color",
+                    "note": "Need a smaller fit.",
+                },
+                format="json",
+            )
+
+        self.assertEqual(response.status_code, 200)
+        order.refresh_from_db()
+        item.refresh_from_db()
+        self.variant.refresh_from_db()
+        self.assertEqual(item.cancelled_quantity, 1)
+        self.assertEqual(order.order_status, "new")
+        self.assertEqual(order.subtotal, self.product.price * 2)
+        self.assertEqual(order.total, (self.product.price * 2) + 300)
+        self.assertEqual(self.variant.stock, 3)
+        self.assertEqual(response.json()["items"][0]["cancellableQuantity"], 2)
+        self.assertEqual(OrderCancellation.objects.count(), 1)
+        self.assertEqual(len(mail.outbox), 2)
+
+    def test_full_cancellation_sets_order_cancelled_and_removes_delivery_fee(self):
+        order = self.create_pay_on_delivery_order(quantity=2)
+        item = order.items.first()
+        self.client.force_authenticate(user=self.customer)
+
+        response = self.client.post(
+            f"/api/v1/account/orders/{order.order_number}/cancellations",
+            {
+                "items": [{"orderItemId": item.pk, "quantity": 2}],
+                "reason": "changed_mind",
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        order.refresh_from_db()
+        self.assertEqual(order.order_status, "cancelled")
+        self.assertEqual(order.subtotal, 0)
+        self.assertEqual(order.delivery_fee, 0)
+        self.assertEqual(order.total, 0)
+        self.assertFalse(response.json()["canCancel"])
+
+    def test_prepaid_orders_cannot_be_cancelled_online(self):
+        order = self.create_pay_on_delivery_order(quantity=1)
+        order.payment_timing = "prepay"
+        order.payment_status = "pending"
+        order.order_status = "awaiting_payment"
+        order.save(update_fields=["payment_timing", "payment_status", "order_status", "updated_at"])
+        item = order.items.first()
+        self.client.force_authenticate(user=self.customer)
+
+        response = self.client.post(
+            f"/api/v1/account/orders/{order.order_number}/cancellations",
+            {
+                "items": [{"orderItemId": item.pk, "quantity": 1}],
+                "reason": "ordered_by_mistake",
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("Only pay-on-delivery", response.json()["detail"])
+
+    def test_orders_beyond_new_cannot_be_cancelled_online(self):
+        order = self.create_pay_on_delivery_order(quantity=1, status="ready_for_dispatch")
+        item = order.items.first()
+        self.client.force_authenticate(user=self.customer)
+
+        response = self.client.post(
+            f"/api/v1/account/orders/{order.order_number}/cancellations",
+            {
+                "items": [{"orderItemId": item.pk, "quantity": 1}],
+                "reason": "delivery_timing",
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("dispatch", response.json()["detail"])
+
+    def test_customer_cannot_cancel_another_customers_order(self):
+        order = self.create_pay_on_delivery_order(quantity=1)
+        item = order.items.first()
+        self.client.force_authenticate(user=self.other_customer)
+
+        response = self.client.post(
+            f"/api/v1/account/orders/{order.order_number}/cancellations",
+            {
+                "items": [{"orderItemId": item.pk, "quantity": 1}],
+                "reason": "ordered_by_mistake",
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 404)
+
+    def test_invalid_quantity_and_missing_reason_return_validation_errors(self):
+        order = self.create_pay_on_delivery_order(quantity=1)
+        item = order.items.first()
+        self.client.force_authenticate(user=self.customer)
+
+        missing_reason_response = self.client.post(
+            f"/api/v1/account/orders/{order.order_number}/cancellations",
+            {"items": [{"orderItemId": item.pk, "quantity": 1}]},
+            format="json",
+        )
+        quantity_response = self.client.post(
+            f"/api/v1/account/orders/{order.order_number}/cancellations",
+            {
+                "items": [{"orderItemId": item.pk, "quantity": 2}],
+                "reason": "ordered_by_mistake",
+            },
+            format="json",
+        )
+
+        self.assertEqual(missing_reason_response.status_code, 400)
+        self.assertEqual(quantity_response.status_code, 400)
+        self.assertIn("Only 1 piece", quantity_response.json()["items"])
