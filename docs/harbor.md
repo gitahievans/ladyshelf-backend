@@ -17,6 +17,15 @@ This runbook documents the LadyShelf Harbor registry installed on the production
 | Public endpoint | Host Nginx on port 443 |
 | Scanner | Trivy is not installed |
 
+First published backend release:
+
+- source commit: `1f3f52ba5a05bc3f59e421fa86d05da0a1eb1881`;
+- tag: `registry.ladyshelf.site/ladyshelf/backend:1f3f52ba5a05bc3f59e421fa86d05da0a1eb1881`;
+- immutable digest: `registry.ladyshelf.site/ladyshelf/backend@sha256:86740e767f16efd21f25b48f5e8f824eb48121b46da3d4bd99e5e904b9df99b4`;
+- publisher push and production pull succeeded through Cloudflare on 2026-07-18.
+
+The image was scanned externally with checksum-verified Trivy v0.69.3 because the integrated Harbor scanner is intentionally absent. A fixable PyJWT authentication-bypass finding was corrected before publication. The published image retained unfixed Debian base-image findings, including three critical `perl-base` records; rescan it when a new Debian/Python base image is available. The PostgreSQL-backed test suite and production checks were deliberately not rerun for this publication at the user's direction.
+
 This is an intentionally constrained deployment. The VM has 2 vCPU, 3.7 GiB RAM, and a 38 GiB root disk, below [Harbor's published minimum](https://goharbor.io/docs/edge/install-config/installation-prereqs/). Harbor shares the host with the planned Django and PostgreSQL stack. Monitor memory, swap, and disk closely; idle measurements do not predict behavior under image pushes, garbage collection, database work, or application load.
 
 ## Request path and isolation

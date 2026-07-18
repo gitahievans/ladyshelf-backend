@@ -4,9 +4,9 @@ Last updated: 2026-07-18 (Africa/Nairobi)
 
 ## Resume point
 
-**Current state:** VM bootstrap, production container preparation, and a constrained Harbor installation are complete. Harbor is ready for the first immutable backend image: authenticated publisher push, production pull, and production push denial have passed through Cloudflare. Production secrets, PostgreSQL production data, and the Django deployment do not exist yet. The public API intentionally returns `503 {"status":"deployment_pending"}`.
+**Current state:** VM bootstrap, production container preparation, constrained Harbor installation, and publication of the first immutable backend image are complete. The release image for commit `1f3f52ba5a05bc3f59e421fa86d05da0a1eb1881` is available at `registry.ladyshelf.site/ladyshelf/backend@sha256:86740e767f16efd21f25b48f5e8f824eb48121b46da3d4bd99e5e904b9df99b4`. Production secrets, PostgreSQL production data, and the Django deployment do not exist yet. The public API intentionally returns `503 {"status":"deployment_pending"}`.
 
-**Next milestone:** build, scan, and push an immutable backend image to Harbor, then prepare production configuration for the first deployment. Read `AGENTS.md` and `deploy/README.md` before acting.
+**Next milestone:** prepare production configuration and install the release artifacts on the VM, without yet replacing the Nginx deployment placeholder. Read `AGENTS.md` and `deploy/README.md` before acting.
 
 ## Infrastructure completed
 
@@ -57,6 +57,19 @@ Operational runbook: [`docs/harbor.md`](harbor.md).
 - PostgreSQL testing exposed and fixed a nullable-join `SELECT FOR UPDATE` issue in `admin_portal/views.py`.
 - Payment notification tests no longer depend on the developer's ambient `.env` staff-recipient setting.
 
+## Backend image publication milestone
+
+- All intended application and deployment changes were committed and pushed to `main` in `e41008f9ce258f0d409d68ca9f8d5a1b23280d42` (`Prepare production deployment and Harbor registry`).
+- The first scan found a fixable high-severity JWT authentication-bypass issue in PyJWT 2.12.1. That image was not published. PyJWT was upgraded to 2.13.0 and committed/pushed in `1f3f52ba5a05bc3f59e421fa86d05da0a1eb1881` (`Upgrade PyJWT for authentication security`).
+- The corrected Linux image was built from a Git archive of commit `1f3f52ba5a05bc3f59e421fa86d05da0a1eb1881`. Its OCI revision label matches that full commit SHA, and its build collected 157 static files with 751 post-processing operations.
+- The corrected image was scanned with checksum-verified Trivy v0.69.3, run unprivileged against a saved image archive without Harbor credentials or Docker-socket access. The scan database was downloaded on 2026-07-18.
+- Corrected scan result: 3 critical, 19 high, 57 medium, 67 low, and 31 unknown findings. There were no vendor fixes available for any critical/high finding. The critical findings were Debian `perl-base` issues; one applies to 32-bit builds while this image is amd64. These unfixed base-image findings remain a tracked release risk and must be rescanned when Debian or the Python base image publishes fixes.
+- The user explicitly directed that the PostgreSQL-backed test suite and production checks not be rerun for this publication. The scan and image build passed, but this release must not be represented as having current-commit test/check evidence.
+- Publisher push through Cloudflare succeeded. Production pull through Cloudflare succeeded using the pull-only robot and the fully qualified digest.
+- Published tag: `registry.ladyshelf.site/ladyshelf/backend:1f3f52ba5a05bc3f59e421fa86d05da0a1eb1881`.
+- Immutable production reference: `registry.ladyshelf.site/ladyshelf/backend@sha256:86740e767f16efd21f25b48f5e8f824eb48121b46da3d4bd99e5e904b9df99b4`.
+- After transient scan/build cleanup, all nine Harbor containers were healthy, Harbor still listened only on `127.0.0.1:8081`, root disk use was 28% with about 26 GiB free, `/tmp` was 1% used, available memory was about 2.8 GiB, and `/opt/harbor-data` was about 197 MiB.
+
 ## Validation evidence
 
 - Linux production image built successfully on the VM, then the test image was removed.
@@ -70,42 +83,23 @@ Operational runbook: [`docs/harbor.md`](harbor.md).
 - Backup script produced a root-only custom-format dump; `pg_restore --list` read 224 archive entries.
 - Disposable test containers, network, PostgreSQL volume, backend image, source archive, environment file, and `/tmp` directory were deleted. Nothing was deployed.
 
-## Worktree ownership boundary
+## Repository state
 
-At deployment work start, these user changes already existed and must not be discarded or attributed to deployment work:
-
-- `admin_portal/serializers.py`, `admin_portal/tests.py`
-- `catalog/admin.py`, `catalog/models.py`, `catalog/serializers.py`, `catalog/tests.py`
-- `checkout/services.py`, `checkout/tests.py`
-- `catalog/migrations/0002_productvariant_image_url.py` (untracked)
-
-Deployment work added or changed:
-
-- `.dockerignore`, `.gitignore`, `.env.example`, `Dockerfile`, `requirements.txt`, `README.md`
-- `config/settings.py`, `config/gunicorn.py`
-- `admin_portal/views.py`, `payments/tests.py`
-- `docs/environment.md`, `docs/deployment-handoff.md`, `AGENTS.md`
-- everything under `deploy/`
-
-Nothing has been staged or committed. Inspect current `git status` before continuing.
+- The user confirmed that all previously dirty application changes were intended for this release.
+- Those changes and the deployment work are now committed and pushed to `main`; the release source commit is `1f3f52ba5a05bc3f59e421fa86d05da0a1eb1881`.
+- Continue to inspect `git status` and targeted diffs before future edits; do not absorb new unrelated changes into deployment commits.
 
 ## Pending plan
 
-### 1. Publish the backend image
-
-- Review/commit the intended repository changes without absorbing unrelated dirty files accidentally.
-- Build the image from the intended commit, tag with commit SHA (not `latest`), scan it, push to Harbor, and record the immutable digest.
-- Set production `BACKEND_IMAGE` to that tag or digest.
-- Monitor Cloudflare's request-size and proxy-timeout behavior while pushing the real backend image. Keep image layers within the applicable Cloudflare limit.
-
-### 2. Prepare production configuration
+### 1. Prepare production configuration
 
 - Generate strong Django and PostgreSQL secrets directly into `/opt/ladyshelf/secrets/backend.env` (`0600`). No production DB password exists yet.
 - Fill real Supabase, SMTP, frontend CORS/CSRF, staff email, and SasaPay sandbox values. Keep SasaPay sandbox until live approval.
+- Set `BACKEND_IMAGE=registry.ladyshelf.site/ladyshelf/backend@sha256:86740e767f16efd21f25b48f5e8f824eb48121b46da3d4bd99e5e904b9df99b4`.
 - Copy Compose/scripts/systemd artifacts to the paths specified in `deploy/README.md` with documented permissions.
 - Configure an off-server destination for completed database dumps before launch.
 
-### 3. First deployment
+### 2. First deployment
 
 - Run the controlled release script: validate configuration, pull images, start DB, migrate, bootstrap roles, start backend, and verify loopback health.
 - Replace the Nginx placeholder with a proxy to `127.0.0.1:8000`; pass `Host`, `X-Forwarded-For`, and `X-Forwarded-Proto`; validate and reload Nginx.
@@ -114,7 +108,7 @@ Nothing has been staged or committed. Inspect current `git status` before contin
 - Verify public health, admin/static assets, API schema, CORS/auth, checkout, SasaPay callback reachability/idempotency, email, container health, logs, restart recovery, and direct-origin blocking.
 - Enable HSTS only after every intended `ladyshelf.site` hostname is permanently HTTPS-capable; start conservatively without preload/includeSubDomains.
 
-### 4. Deferred Harbor operations
+### 3. Deferred Harbor operations
 
 - Configure the approved retention policy to keep the five most recently pushed tags per repository.
 - Configure weekly garbage collection with one worker, run an initial dry run, review the output, and verify disk usage after the first real collection.
