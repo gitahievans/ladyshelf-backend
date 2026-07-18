@@ -4,9 +4,9 @@ Last updated: 2026-07-18 (Africa/Nairobi)
 
 ## Resume point
 
-**Current state:** VM bootstrap, production container preparation, constrained Harbor installation, and publication of the first immutable backend image are complete. The release image for commit `1f3f52ba5a05bc3f59e421fa86d05da0a1eb1881` is available at `registry.ladyshelf.site/ladyshelf/backend@sha256:86740e767f16efd21f25b48f5e8f824eb48121b46da3d4bd99e5e904b9df99b4`. Production secrets, PostgreSQL production data, and the Django deployment do not exist yet. The public API intentionally returns `503 {"status":"deployment_pending"}`.
+**Current state:** VM bootstrap, production container preparation, constrained Harbor installation, immutable backend image publication, and production configuration installation are complete. The release image for commit `1f3f52ba5a05bc3f59e421fa86d05da0a1eb1881` is configured by digest. Root-only production secrets now exist on the VM. PostgreSQL production data and the Django deployment do not exist yet. The public API intentionally returns `503 {"status":"deployment_pending"}`.
 
-**Next milestone:** prepare production configuration and install the release artifacts on the VM, without yet replacing the Nginx deployment placeholder. Read `AGENTS.md` and `deploy/README.md` before acting.
+**Next milestone:** perform the separately approved first deployment: start PostgreSQL, run migrations and role bootstrap, start Gunicorn, verify loopback health, then replace the Nginx placeholder and validate the public API. Read `AGENTS.md` and `deploy/README.md` before acting.
 
 ## Infrastructure completed
 
@@ -53,7 +53,7 @@ Operational runbook: [`docs/harbor.md`](harbor.md).
   - runs PostgreSQL 16.14 with an internal-only port and named volume;
   - adds health checks, restart policies, resource limits, and log rotation.
 - Operational artifacts exist for controlled releases, PostgreSQL backups, five-minute unpaid-order expiry, and daily backup timers.
-- `deploy/backend.env.example` is the production secret/config template. No production values have been generated.
+- `deploy/backend.env.example` is the non-secret production configuration template. Production values exist only in the root-only VM environment file and are not stored in Git.
 - PostgreSQL testing exposed and fixed a nullable-join `SELECT FOR UPDATE` issue in `admin_portal/views.py`.
 - Payment notification tests no longer depend on the developer's ambient `.env` staff-recipient setting.
 
@@ -69,6 +69,16 @@ Operational runbook: [`docs/harbor.md`](harbor.md).
 - Published tag: `registry.ladyshelf.site/ladyshelf/backend:1f3f52ba5a05bc3f59e421fa86d05da0a1eb1881`.
 - Immutable production reference: `registry.ladyshelf.site/ladyshelf/backend@sha256:86740e767f16efd21f25b48f5e8f824eb48121b46da3d4bd99e5e904b9df99b4`.
 - After transient scan/build cleanup, all nine Harbor containers were healthy, Harbor still listened only on `127.0.0.1:8081`, root disk use was 28% with about 26 GiB free, `/tmp` was 1% used, available memory was about 2.8 GiB, and `/opt/harbor-data` was about 197 MiB.
+
+## Production configuration milestone
+
+- Installed `/opt/ladyshelf/compose.prod.yml` (`0644`, root-owned), release and PostgreSQL backup scripts (`0755`, root-owned), and the four systemd unit/timer files (`0644`, root-owned).
+- Generated independent strong Django and PostgreSQL secrets directly for production. The completed environment is `/opt/ladyshelf/secrets/backend.env`, mode `0600`, root-owned, beneath a `0700` directory. The temporary credential input was deleted locally and from the VM.
+- Configured the immutable backend digest, Supabase project/JWKS URL, both production frontend origins, Gmail SMTP with TLS, the administrative/order notification recipient, SasaPay sandbox credentials and callback, production security settings, and internal PostgreSQL settings. No secret values are recorded in this repository or handoff.
+- The Gmail application password and SasaPay secret had been pasted into chat. The user declined rotation and explicitly approved using them. Treat this as an accepted credential-exposure risk; rotation remains strongly recommended.
+- The user explicitly declined an off-VM PostgreSQL backup destination. Local backup tooling is installed but the backup timer remains disabled. Until off-VM copies and restore tests exist, VM or root-disk loss can destroy all production database data.
+- Compose configuration validation passed and resolved to the expected immutable backend digest plus `postgres:16.14-bookworm`. Required environment entries are present, and root's Docker configuration contains registry authentication for production pulls.
+- No application containers were started. Ports 8000 and 5432 are not listening, both LadyShelf timers are disabled, Nginx was not changed, and the public health endpoint still returns the intentional `503 {"status":"deployment_pending"}` placeholder.
 
 ## Validation evidence
 
@@ -91,24 +101,16 @@ Operational runbook: [`docs/harbor.md`](harbor.md).
 
 ## Pending plan
 
-### 1. Prepare production configuration
-
-- Generate strong Django and PostgreSQL secrets directly into `/opt/ladyshelf/secrets/backend.env` (`0600`). No production DB password exists yet.
-- Fill real Supabase, SMTP, frontend CORS/CSRF, staff email, and SasaPay sandbox values. Keep SasaPay sandbox until live approval.
-- Set `BACKEND_IMAGE=registry.ladyshelf.site/ladyshelf/backend@sha256:86740e767f16efd21f25b48f5e8f824eb48121b46da3d4bd99e5e904b9df99b4`.
-- Copy Compose/scripts/systemd artifacts to the paths specified in `deploy/README.md` with documented permissions.
-- Configure an off-server destination for completed database dumps before launch.
-
-### 2. First deployment
+### 1. First deployment
 
 - Run the controlled release script: validate configuration, pull images, start DB, migrate, bootstrap roles, start backend, and verify loopback health.
 - Replace the Nginx placeholder with a proxy to `127.0.0.1:8000`; pass `Host`, `X-Forwarded-For`, and `X-Forwarded-Proto`; validate and reload Nginx.
 - Create the first Django superuser interactively.
-- Enable expiry and backup timers only after the stack is healthy; verify a backup and test restore on a disposable database.
+- Enable the expiry timer only after the stack is healthy. The backup timer may create local dumps, but off-VM protection and restore testing remain explicitly deferred by the user.
 - Verify public health, admin/static assets, API schema, CORS/auth, checkout, SasaPay callback reachability/idempotency, email, container health, logs, restart recovery, and direct-origin blocking.
 - Enable HSTS only after every intended `ladyshelf.site` hostname is permanently HTTPS-capable; start conservatively without preload/includeSubDomains.
 
-### 3. Deferred Harbor operations
+### 2. Deferred Harbor operations
 
 - Configure the approved retention policy to keep the five most recently pushed tags per repository.
 - Configure weekly garbage collection with one worker, run an initial dry run, review the output, and verify disk usage after the first real collection.
