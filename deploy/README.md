@@ -39,6 +39,7 @@ Install these files after Harbor is ready:
 - completed `backend.env.example` → `/opt/ladyshelf/secrets/backend.env`, mode `0600`
 - scripts → `/opt/ladyshelf/scripts/`, mode `0755`
 - systemd units → `/etc/systemd/system/`, mode `0644`
+- `nginx-api.conf` → `/etc/nginx/sites-available/api.ladyshelf.site`, mode `0644`; preserve a rollback copy, run `nginx -t`, and reload only after loopback backend health succeeds
 
 Set `BACKEND_IMAGE` to an immutable Harbor tag or digest. Run `scripts/release.sh` to validate the stack, pull images, start PostgreSQL, run migrations, synchronize admin roles, start the backend, and verify health.
 

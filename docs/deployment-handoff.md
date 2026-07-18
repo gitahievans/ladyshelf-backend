@@ -4,9 +4,9 @@ Last updated: 2026-07-18 (Africa/Nairobi)
 
 ## Resume point
 
-**Current state:** VM bootstrap, production container preparation, constrained Harbor installation, immutable backend image publication, and production configuration installation are complete. The release image for commit `1f3f52ba5a05bc3f59e421fa86d05da0a1eb1881` is configured by digest. Root-only production secrets now exist on the VM. PostgreSQL production data and the Django deployment do not exist yet. The public API intentionally returns `503 {"status":"deployment_pending"}`.
+**Current state:** LadyShelf is deployed. PostgreSQL 16.14 and the corrected Gunicorn backend are healthy; Django is bound only to `127.0.0.1:8000`, PostgreSQL has no host port, and Nginx proxies `https://api.ladyshelf.site` through Cloudflare. The deployed source revision is `5273eecab837c561de800ed3fb2f04ba2bb5a74d`, using `registry.ladyshelf.site/ladyshelf/backend@sha256:57bc9291f151d6212cda66e97ad6bb0da39fccbb54a46c25c04ecc5cc6c8ed35`.
 
-**Next milestone:** perform the separately approved first deployment: start PostgreSQL, run migrations and role bootstrap, start Gunicorn, verify loopback health, then replace the Nginx placeholder and validate the public API. Read `AGENTS.md` and `deploy/README.md` before acting.
+**Next milestone:** complete post-deployment operations: create the first Django superuser interactively, enable the order-expiry timer, decide whether to enable local-only database backups despite the absence of off-VM protection, and validate Supabase authentication, email delivery, checkout, and SasaPay callback behavior without switching SasaPay out of sandbox. Read `AGENTS.md` and `deploy/README.md` before acting.
 
 ## Infrastructure completed
 
@@ -22,7 +22,7 @@ Last updated: 2026-07-18 (Africa/Nairobi)
 - Active 2 GiB `/swapfile`; no reboot pending at setup completion.
 - SSH is root key-only: password and keyboard-interactive authentication disabled.
 - UFW defaults to deny inbound; port 22 is open and port 443 is allowed only from Cloudflare's published networks.
-- Nginx restores `CF-Connecting-IP`, serves TLS on 443, and currently returns the deployment placeholder. The packaged default port-80 site is disabled.
+- Nginx restores `CF-Connecting-IP`, serves TLS on 443, and proxies the API to loopback Gunicorn. The packaged default port-80 site is disabled.
 - Prepared root-owned paths: `/opt/ladyshelf`, `/opt/ladyshelf/config`, `/opt/ladyshelf/secrets` (`0700`), and `/opt/ladyshelf/backups` (`0700`).
 - Verified on 2026-07-18: Docker, Nginx, Fail2ban, and UFW active; only ports 22/443 listening; no containers present.
 
@@ -67,7 +67,7 @@ Operational runbook: [`docs/harbor.md`](harbor.md).
 - The user explicitly directed that the PostgreSQL-backed test suite and production checks not be rerun for this publication. The scan and image build passed, but this release must not be represented as having current-commit test/check evidence.
 - Publisher push through Cloudflare succeeded. Production pull through Cloudflare succeeded using the pull-only robot and the fully qualified digest.
 - Published tag: `registry.ladyshelf.site/ladyshelf/backend:1f3f52ba5a05bc3f59e421fa86d05da0a1eb1881`.
-- Immutable production reference: `registry.ladyshelf.site/ladyshelf/backend@sha256:86740e767f16efd21f25b48f5e8f824eb48121b46da3d4bd99e5e904b9df99b4`.
+- Initial immutable reference: `registry.ladyshelf.site/ladyshelf/backend@sha256:86740e767f16efd21f25b48f5e8f824eb48121b46da3d4bd99e5e904b9df99b4`. This was superseded before public cutover by the Gunicorn control-socket correction below.
 - After transient scan/build cleanup, all nine Harbor containers were healthy, Harbor still listened only on `127.0.0.1:8081`, root disk use was 28% with about 26 GiB free, `/tmp` was 1% used, available memory was about 2.8 GiB, and `/opt/harbor-data` was about 197 MiB.
 
 ## Production configuration milestone
@@ -80,6 +80,18 @@ Operational runbook: [`docs/harbor.md`](harbor.md).
 - Compose configuration validation passed and resolved to the expected immutable backend digest plus `postgres:16.14-bookworm`. Required environment entries are present, and root's Docker configuration contains registry authentication for production pulls.
 - No application containers were started. Ports 8000 and 5432 are not listening, both LadyShelf timers are disabled, Nginx was not changed, and the public health endpoint still returns the intentional `503 {"status":"deployment_pending"}` placeholder.
 
+## First deployment milestone
+
+- The initial release created a new `ladyshelf_postgres_data` volume, started PostgreSQL 16.14, applied all Django migrations through `wishlist.0001_initial`, and ran `bootstrap_admin_roles`. The Owner group synchronized 48 permissions and Attendant synchronized 14.
+- The initial backend became healthy and served health/static responses, but Gunicorn 26 logged a control-server error because its default `/app/.gunicorn/gunicorn.ctl` path conflicted with the intentionally read-only container filesystem. Public Nginx remained on the placeholder while this was corrected.
+- Added `control_socket_disable = True`, committed/pushed as `5273eecab837c561de800ed3fb2f04ba2bb5a74d`, rebuilt, and rescanned the exact commit. The scan matched the accepted baseline: 3 critical, 19 high, 57 medium, 67 low, and 31 unknown; no critical/high finding had a vendor fix.
+- Published and production-pull verified `registry.ladyshelf.site/ladyshelf/backend@sha256:57bc9291f151d6212cda66e97ad6bb0da39fccbb54a46c25c04ecc5cc6c8ed35`.
+- Atomically updated only `BACKEND_IMAGE` and recreated only the backend container. PostgreSQL's container ID remained unchanged. The corrected backend became healthy, its OCI revision label matched `5273eecab837c561de800ed3fb2f04ba2bb5a74d`, effective `control_socket_disable` was `True`, and corrected-start logs contained no error or traceback.
+- Replaced the Nginx placeholder with the reviewed loopback proxy after `nginx -t` passed. Rollback copy: `/etc/nginx/sites-available/api.ladyshelf.site.placeholder-20260718T0140Z`.
+- Public Cloudflare validation passed: health, admin CSS, OpenAPI schema, Swagger UI, and admin login returned HTTP 200; `https://ladyshelf.site` received the expected CORS allow-origin response. Cloudflare served HTTP/2 and returned a `cf-ray` header.
+- Final isolation and capacity evidence: only `127.0.0.1:8000` was published for Django; PostgreSQL had no host listener; Nginx was active; both application containers were healthy; backend used about 182 MiB, PostgreSQL about 43 MiB, available host memory was about 2.7 GiB, negligible swap was used, and root disk was 28% used after cleanup.
+- The first superuser has not been created. Order-expiry and database-backup timers remain disabled. HSTS, live SasaPay, off-VM backups, restart-survival testing, and end-to-end external integrations remain pending.
+
 ## Validation evidence
 
 - Linux production image built successfully on the VM, then the test image was removed.
@@ -91,24 +103,22 @@ Operational runbook: [`docs/harbor.md`](harbor.md).
 - Gunicorn health endpoint and WhiteNoise admin CSS returned `200`; container became healthy; root filesystem write was rejected.
 - Order-expiry command executed successfully.
 - Backup script produced a root-only custom-format dump; `pg_restore --list` read 224 archive entries.
-- Disposable test containers, network, PostgreSQL volume, backend image, source archive, environment file, and `/tmp` directory were deleted. Nothing was deployed.
+- Disposable pre-deployment test resources were deleted before the production deployment. The later production stack and `ladyshelf_postgres_data` volume are active and must not be treated as disposable.
 
 ## Repository state
 
 - The user confirmed that all previously dirty application changes were intended for this release.
-- Those changes and the deployment work are now committed and pushed to `main`; the release source commit is `1f3f52ba5a05bc3f59e421fa86d05da0a1eb1881`.
+- Those changes and the deployment work are committed and pushed to `main`; the currently deployed source commit is `5273eecab837c561de800ed3fb2f04ba2bb5a74d`.
 - Continue to inspect `git status` and targeted diffs before future edits; do not absorb new unrelated changes into deployment commits.
 
 ## Pending plan
 
-### 1. First deployment
+### 1. Post-deployment operations
 
-- Run the controlled release script: validate configuration, pull images, start DB, migrate, bootstrap roles, start backend, and verify loopback health.
-- Replace the Nginx placeholder with a proxy to `127.0.0.1:8000`; pass `Host`, `X-Forwarded-For`, and `X-Forwarded-Proto`; validate and reload Nginx.
-- Create the first Django superuser interactively.
-- Enable the expiry timer only after the stack is healthy. The backup timer may create local dumps, but off-VM protection and restore testing remain explicitly deferred by the user.
-- Verify public health, admin/static assets, API schema, CORS/auth, checkout, SasaPay callback reachability/idempotency, email, container health, logs, restart recovery, and direct-origin blocking.
-- Enable HSTS only after every intended `ladyshelf.site` hostname is permanently HTTPS-capable; start conservatively without preload/includeSubDomains.
+- Create the first Django superuser interactively; do not put its password in chat, Git, or shell history.
+- Enable and verify the order-expiry timer. Decide separately whether to enable local database dumps while off-VM backup remains declined.
+- Validate Supabase authentication, email delivery, checkout, SasaPay sandbox callback reachability/idempotency, container restart recovery, and direct-origin blocking.
+- Keep SasaPay in sandbox until merchant live approval. Enable HSTS only after every intended `ladyshelf.site` hostname is permanently HTTPS-capable; start conservatively without preload/includeSubDomains.
 
 ### 2. Deferred Harbor operations
 

@@ -17,7 +17,7 @@ This runbook documents the LadyShelf Harbor registry installed on the production
 | Public endpoint | Host Nginx on port 443 |
 | Scanner | Trivy is not installed |
 
-First published backend release:
+Initial published backend release:
 
 - source commit: `1f3f52ba5a05bc3f59e421fa86d05da0a1eb1881`;
 - tag: `registry.ladyshelf.site/ladyshelf/backend:1f3f52ba5a05bc3f59e421fa86d05da0a1eb1881`;
@@ -25,6 +25,13 @@ First published backend release:
 - publisher push and production pull succeeded through Cloudflare on 2026-07-18.
 
 The image was scanned externally with checksum-verified Trivy v0.69.3 because the integrated Harbor scanner is intentionally absent. A fixable PyJWT authentication-bypass finding was corrected before publication. The published image retained unfixed Debian base-image findings, including three critical `perl-base` records; rescan it when a new Debian/Python base image is available. The PostgreSQL-backed test suite and production checks were deliberately not rerun for this publication at the user's direction.
+
+The initial image was superseded before public cutover because Gunicorn 26's default control socket attempted to write beneath the read-only `/app` filesystem. Current deployed backend release:
+
+- source commit: `5273eecab837c561de800ed3fb2f04ba2bb5a74d`;
+- tag: `registry.ladyshelf.site/ladyshelf/backend:5273eecab837c561de800ed3fb2f04ba2bb5a74d`;
+- immutable digest: `registry.ladyshelf.site/ladyshelf/backend@sha256:57bc9291f151d6212cda66e97ad6bb0da39fccbb54a46c25c04ecc5cc6c8ed35`;
+- checksum-verified scan matched the accepted prior baseline and production pull verification passed through Cloudflare on 2026-07-18.
 
 This is an intentionally constrained deployment. The VM has 2 vCPU, 3.7 GiB RAM, and a 38 GiB root disk, below [Harbor's published minimum](https://goharbor.io/docs/edge/install-config/installation-prereqs/). Harbor shares the host with the planned Django and PostgreSQL stack. Monitor memory, swap, and disk closely; idle measurements do not predict behavior under image pushes, garbage collection, database work, or application load.
 
