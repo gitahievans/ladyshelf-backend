@@ -6,7 +6,7 @@ Last updated: 2026-07-18 (Africa/Nairobi)
 
 **Current state:** LadyShelf is deployed. PostgreSQL 16.14 and the corrected Gunicorn backend are healthy; Django is bound only to `127.0.0.1:8000`, PostgreSQL has no host port, and Nginx proxies `https://api.ladyshelf.site` through Cloudflare. The deployed source revision is `5273eecab837c561de800ed3fb2f04ba2bb5a74d`, using `registry.ladyshelf.site/ladyshelf/backend@sha256:57bc9291f151d6212cda66e97ad6bb0da39fccbb54a46c25c04ecc5cc6c8ed35`. The first superuser exists, and the five-minute unpaid-prepay order-expiry timer is enabled and active.
 
-**Next milestone:** fix Supabase token verification by configuring/migrating the Supabase project to expose an asymmetric JWT signing key, then validate a real login with a valid access token. Confirm the accepted Gmail messages arrived in the administrative inbox. Container restart recovery, direct-origin blocking, HSTS, off-VM backups, and the deferred Harbor maintenance remain pending. Read `AGENTS.md` and `deploy/README.md` before acting.
+**Next milestone:** backend work is intentionally paused while the frontend domain is connected to Vercel in a separate workstream. Keep Namecheap as registrar and Cloudflare as authoritative DNS; do not replace Cloudflare's nameservers with Vercel's. Point only the frontend apex/`www` records to the exact targets shown by Vercel, using Cloudflare DNS-only records, while preserving the proxied `api` and `registry` records. When backend work resumes, fix Supabase token verification and continue the remaining post-deployment and deferred Harbor operations below. Read `AGENTS.md` and `deploy/README.md` before acting in this repository.
 
 ## Infrastructure completed
 
@@ -97,12 +97,21 @@ Operational runbook: [`docs/harbor.md`](harbor.md).
 - Created the first Django superuser with username `admin` and administrative email `evanygk@gmail.com`. A database audit verified that it is active, staff, and superuser. The password is not recorded in Git or this handoff, and the one-time local and VM input files were deleted.
 - Enabled and started `ladyshelf-expire-orders.timer`. It is enabled and active on a five-minute schedule; an immediate service run exited successfully and reported `Expired 0 unpaid prepaid order(s).`
 - Supabase's configured JWKS endpoint was reachable over HTTPS and returned HTTP 200, but its public response was `{"keys":[]}`. Invalid bearer-token rejection works and returned HTTP 403. Successful Supabase authentication cannot be validated and is expected to fail until the project exposes an asymmetric signing key; a valid test access token is also still required for the successful-login check.
-- Django's configured Gmail SMTP service accepted direct and checkout-related test messages. SMTP acceptance is verified, but receipt in the administrative mailbox still requires human confirmation.
+- Django's configured Gmail SMTP service accepted direct and checkout-related test messages. The user subsequently confirmed that the messages arrived in the administrative inbox, completing the email-delivery validation.
 - A uniquely tagged production smoke flow passed through the public Cloudflare endpoint: delivery quote, guest prepaid order creation, and one real SasaPay sandbox checkout session all succeeded.
 - The same synthetic SasaPay sandbox failure callback was submitted twice through the public callback endpoint. Both requests succeeded and produced one stable failed payment state, verifying callback idempotency for this failure case. This did not switch SasaPay to live mode.
 - All temporary smoke data was removed. The flow deleted one temporary order plus its transaction and the temporary catalog records; a separate database audit found zero matching smoke products and zero matching smoke orders.
 - Final infrastructure audit found the backend and PostgreSQL containers healthy, Django published only on `127.0.0.1:8000`, PostgreSQL with only its internal container port and no host listener, and the order-expiry timer enabled/active.
 - Fixed Django admin login CSRF failures caused by the API Nginx site sending `Referrer-Policy: no-referrer`. Browser POSTs consequently arrived at Django with `Origin: null` and were correctly rejected. Changed only the API site's policy to `same-origin`; `nginx -t` passed and Nginx reloaded successfully without restarting the application or database. A controlled public Cloudflare round trip fetched a fresh CSRF token and submitted dummy credentials: GET and POST both returned HTTP 200, and Django reached normal credential validation rather than CSRF rejection. Rollback copy: `/etc/nginx/sites-available/api.ladyshelf.site.pre-referrer-policy-20260718T080301Z`.
+
+## Frontend handoff decision
+
+- Backend work was intentionally paused after the production admin login and email-delivery validations passed. The next workstream is connecting the Vercel-hosted frontend to `ladyshelf.site`.
+- Namecheap remains the registrar, and its delegation must continue using the existing Cloudflare nameservers. Cloudflare remains the authoritative DNS provider; do not replace its nameservers with Vercel's.
+- In the next workstream, inspect the Vercel project first and use the exact apex, `www`, and verification record values it supplies. Do not guess or hard-code general-purpose Vercel targets when project-specific targets are available.
+- Configure the frontend apex and `www` records in Cloudflare as DNS-only/grey-cloud so traffic reaches Vercel directly. Choose and verify one canonical hostname plus the intended redirect in Vercel.
+- Preserve `api.ladyshelf.site` and `registry.ladyshelf.site` as Cloudflare-proxied records targeting the Ubuntu VM. Do not delete, replace, grey-cloud, or repurpose them during the frontend cutover.
+- Before changing DNS, capture the current records and define rollback values. After the approved change, verify DNS, Vercel domain status, TLS, canonical redirects, frontend loading, calls to `https://api.ladyshelf.site`, and continued public API/Harbor availability.
 
 ## Validation evidence
 
@@ -128,7 +137,6 @@ Operational runbook: [`docs/harbor.md`](harbor.md).
 ### 1. Post-deployment operations
 
 - Configure or migrate Supabase JWT signing so the public JWKS endpoint exposes at least one asymmetric key, obtain a valid test-user access token without recording it, and validate a successful authenticated API request.
-- Confirm the Gmail test and checkout messages arrived in `evanygk@gmail.com`; server-side SMTP acceptance has already passed.
 - Validate container restart recovery and direct-origin blocking.
 - PostgreSQL backups remain explicitly declined. Do not enable the local backup timer unless the user revisits that decision; off-VM backup/restore remains strongly recommended.
 - Keep SasaPay in sandbox until merchant live approval. Enable HSTS only after every intended `ladyshelf.site` hostname is permanently HTTPS-capable; start conservatively without preload/includeSubDomains.
