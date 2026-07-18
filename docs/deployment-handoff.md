@@ -102,6 +102,7 @@ Operational runbook: [`docs/harbor.md`](harbor.md).
 - The same synthetic SasaPay sandbox failure callback was submitted twice through the public callback endpoint. Both requests succeeded and produced one stable failed payment state, verifying callback idempotency for this failure case. This did not switch SasaPay to live mode.
 - All temporary smoke data was removed. The flow deleted one temporary order plus its transaction and the temporary catalog records; a separate database audit found zero matching smoke products and zero matching smoke orders.
 - Final infrastructure audit found the backend and PostgreSQL containers healthy, Django published only on `127.0.0.1:8000`, PostgreSQL with only its internal container port and no host listener, and the order-expiry timer enabled/active.
+- Fixed Django admin login CSRF failures caused by the API Nginx site sending `Referrer-Policy: no-referrer`. Browser POSTs consequently arrived at Django with `Origin: null` and were correctly rejected. Changed only the API site's policy to `same-origin`; `nginx -t` passed and Nginx reloaded successfully without restarting the application or database. A controlled public Cloudflare round trip fetched a fresh CSRF token and submitted dummy credentials: GET and POST both returned HTTP 200, and Django reached normal credential validation rather than CSRF rejection. Rollback copy: `/etc/nginx/sites-available/api.ladyshelf.site.pre-referrer-policy-20260718T080301Z`.
 
 ## Validation evidence
 
