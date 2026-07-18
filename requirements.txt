@@ -4,6 +4,6 @@ django-cors-headers==4.9.0
 drf-spectacular==0.29.0
 psycopg[binary]==3.3.3
 python-dotenv==1.2.2
-PyJWT[crypto]==2.12.1
+PyJWT[crypto]==2.13.0
 gunicorn==26.0.0
 whitenoise[brotli]==6.12.0
