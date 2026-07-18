@@ -196,7 +196,7 @@ def build_validated_cart_items(
                 "variantId": variant.external_id,
                 "quantity": quantity,
                 "productName": variant.product.name,
-                "productImage": variant.product.images[0] if variant.product.images else "",
+                "productImage": variant.image_url or (variant.product.images[0] if variant.product.images else ""),
                 "price": variant.product.price,
                 "currency": variant.product.currency,
                 "size": variant.size,

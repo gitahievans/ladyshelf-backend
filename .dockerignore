@@ -1,5 +1,10 @@
 __pycache__/
 *.pyc
+.git/
+.github/
+.env
+.env.*
+.venv/
 db.sqlite3
 staticfiles/
 .pytest_cache/

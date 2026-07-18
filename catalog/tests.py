@@ -1,7 +1,7 @@
 from rest_framework import status
 from rest_framework.test import APITestCase
 
-from catalog.models import Category, Product
+from catalog.models import Category, Product, ProductVariant
 
 
 class CatalogApiTests(APITestCase):
@@ -33,9 +33,13 @@ class CatalogApiTests(APITestCase):
 
     def test_product_detail_returns_variants(self):
         product = Product.objects.get(slug="obsidian-power-blazer")
+        variant = ProductVariant.objects.filter(product=product).first()
+        variant.image_url = "https://example.com/black-blazer.jpg"
+        variant.save(update_fields=["image_url", "updated_at"])
 
         response = self.client.get(f"/api/v1/catalog/products/{product.slug}")
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data["slug"], product.slug)
         self.assertGreater(len(response.data["variants"]), 0)
+        self.assertEqual(response.data["variants"][0]["imageUrl"], variant.image_url)

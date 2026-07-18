@@ -1,0 +1,9 @@
+[Unit]
+Description=Expire unpaid LadyShelf prepaid orders
+Requires=docker.service
+After=docker.service
+
+[Service]
+Type=oneshot
+WorkingDirectory=/opt/ladyshelf
+ExecStart=/usr/bin/docker compose --env-file /opt/ladyshelf/secrets/backend.env -f /opt/ladyshelf/compose.prod.yml exec -T backend python manage.py expire_unpaid_prepay_orders

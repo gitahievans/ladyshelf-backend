@@ -1,0 +1,12 @@
+[Unit]
+Description=Back up the LadyShelf PostgreSQL database
+Requires=docker.service
+After=docker.service
+
+[Service]
+Type=oneshot
+WorkingDirectory=/opt/ladyshelf
+ExecStart=/opt/ladyshelf/scripts/backup-postgres.sh
+Nice=10
+IOSchedulingClass=best-effort
+IOSchedulingPriority=7

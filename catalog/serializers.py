@@ -8,10 +8,11 @@ class ProductVariantSerializer(serializers.ModelSerializer):
     id = serializers.CharField(source="external_id")
     adminId = serializers.CharField(source="pk")
     colorHex = serializers.CharField(source="color_hex")
+    imageUrl = serializers.CharField(source="image_url", allow_blank=True)
 
     class Meta:
         model = ProductVariant
-        fields = ("id", "adminId", "size", "color", "colorHex", "stock", "sku")
+        fields = ("id", "adminId", "size", "color", "colorHex", "imageUrl", "stock", "sku")
 
 
 class ProductSerializer(serializers.ModelSerializer):

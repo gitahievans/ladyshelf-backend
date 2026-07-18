@@ -61,6 +61,9 @@ class CheckoutQuoteTests(TestCase):
         ]
 
     def test_pickup_quote_is_prepay_only_with_zero_delivery_fee(self):
+        self.variant.image_url = "https://example.com/variant-blazer.jpg"
+        self.variant.save(update_fields=["image_url", "updated_at"])
+
         response = self.client.post(
             "/api/v1/checkout/quote",
             {
@@ -87,6 +90,7 @@ class CheckoutQuoteTests(TestCase):
             response.data["pickupInstructions"]["streetAddress"],
             "Lumumba Drive, Roysambu",
         )
+        self.assertEqual(response.data["items"][0]["productImage"], self.variant.image_url)
 
     def test_rider_delivery_allows_mpesa_pay_on_delivery(self):
         response = self.client.post(

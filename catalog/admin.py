@@ -33,7 +33,7 @@ class ProductAdmin(admin.ModelAdmin):
 
 @admin.register(ProductVariant)
 class ProductVariantAdmin(AttendantRestrictedFieldsMixin, admin.ModelAdmin):
-    list_display = ("product", "sku", "color", "size", "stock")
+    list_display = ("product", "sku", "color", "size", "stock", "image_url")
     list_filter = ("color", "size")
     search_fields = ("sku", "external_id", "product__name")
     attendant_readonly_fields = (
@@ -42,6 +42,7 @@ class ProductVariantAdmin(AttendantRestrictedFieldsMixin, admin.ModelAdmin):
         "size",
         "color",
         "color_hex",
+        "image_url",
         "sku",
         "created_at",
         "updated_at",

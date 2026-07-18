@@ -16,6 +16,7 @@ from payments.models import PaymentTransaction, Receipt
     SASAPAY_CLIENT_SECRET="client-secret",
     SASAPAY_MERCHANT_CODE="600980",
     SASAPAY_CALLBACK_URL="https://example.com/api/v1/payments/sasapay/callback",
+    ORDER_NOTIFICATION_STAFF_EMAILS=["staff@example.com"],
 )
 class SasaPayPaymentTests(TestCase):
     def setUp(self):

@@ -1,0 +1,11 @@
+[Unit]
+Description=Run LadyShelf unpaid-order expiry every five minutes
+
+[Timer]
+OnBootSec=5min
+OnUnitActiveSec=5min
+Persistent=true
+Unit=ladyshelf-expire-orders.service
+
+[Install]
+WantedBy=timers.target

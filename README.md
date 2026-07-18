@@ -25,6 +25,7 @@ The backend now covers the MVP commerce flow through Phase 8:
 
 - Environment variables: `docs/environment.md`
 - Launch and backoffice runbook: `docs/launch-runbook.md`
+- Production container deployment: `deploy/README.md`
 
 ## Useful management commands
 

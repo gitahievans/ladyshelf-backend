@@ -499,6 +499,7 @@ class AdminCatalogInventorySettingsTests(TestCase):
                 "size": "M",
                 "color": "Gold",
                 "colorHex": "#d4a853",
+                "imageUrl": "https://example.com/gold-blazer.jpg",
                 "stock": 4,
                 "sku": "ADMIN-TEST-001",
             },
@@ -509,6 +510,7 @@ class AdminCatalogInventorySettingsTests(TestCase):
         self.assertEqual(product_response.json()["name"], "Updated Blazer")
         self.assertEqual(variant_response.status_code, 201)
         self.assertEqual(variant_response.json()["sku"], "ADMIN-TEST-001")
+        self.assertEqual(variant_response.json()["imageUrl"], "https://example.com/gold-blazer.jpg")
 
     def test_owner_can_create_product_and_variant_without_external_ids(self):
         self.client.force_authenticate(user=self.owner)

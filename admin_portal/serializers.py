@@ -421,12 +421,13 @@ class AdminProductWriteSerializer(serializers.ModelSerializer):
 
 class AdminVariantWriteSerializer(serializers.ModelSerializer):
     colorHex = serializers.CharField(source="color_hex")
+    imageUrl = serializers.URLField(source="image_url", required=False, allow_blank=True)
     external_id = serializers.CharField(required=False, allow_blank=True)
     sku = serializers.CharField(required=False, allow_blank=True)
 
     class Meta:
         model = ProductVariant
-        fields = ("external_id", "size", "color", "colorHex", "stock", "sku")
+        fields = ("external_id", "size", "color", "colorHex", "imageUrl", "stock", "sku")
 
     def create(self, validated_data):
         sku = (validated_data.get("sku") or "").strip()
@@ -471,6 +472,7 @@ class AdminInventoryRowSerializer(serializers.ModelSerializer):
     productName = serializers.CharField(source="product.name")
     productSlug = serializers.CharField(source="product.slug")
     colorHex = serializers.CharField(source="color_hex")
+    imageUrl = serializers.CharField(source="image_url", allow_blank=True)
 
     class Meta:
         model = ProductVariant
@@ -482,6 +484,7 @@ class AdminInventoryRowSerializer(serializers.ModelSerializer):
             "size",
             "color",
             "colorHex",
+            "imageUrl",
             "stock",
             "sku",
         )

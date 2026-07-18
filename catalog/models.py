@@ -79,6 +79,7 @@ class ProductVariant(models.Model):
     size = models.CharField(max_length=20)
     color = models.CharField(max_length=120)
     color_hex = models.CharField(max_length=20)
+    image_url = models.URLField(blank=True)
     stock = models.PositiveIntegerField(default=0)
     sku = models.CharField(max_length=80, unique=True)
     created_at = models.DateTimeField(auto_now_add=True)

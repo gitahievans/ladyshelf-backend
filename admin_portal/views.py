@@ -266,7 +266,7 @@ class AdminOrderMarkPaidView(APIView):
         validated_data = input_serializer.validated_data
 
         order = get_object_or_404(
-            Order.objects.select_for_update()
+            Order.objects.select_for_update(of=("self",))
             .select_related("customer")
             .prefetch_related("items", "items__product", "payment_transactions"),
             order_number=order_number,

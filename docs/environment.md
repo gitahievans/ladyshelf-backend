@@ -15,6 +15,23 @@ This backend is configured through environment variables loaded from `.env`.
 | `DJANGO_LOG_LEVEL` | optional | Defaults to `INFO` |
 | `DJANGO_LOG_STRUCTURED` | optional | Set to `true` for JSON logs |
 | `DJANGO_ADMINS` | recommended in production | Comma-separated `Name:email@example.com` values for error emails |
+| `DJANGO_USE_X_FORWARDED_HOST` | production | Trust the host forwarded by the loopback Nginx proxy |
+| `DJANGO_SECURE_SSL_REDIRECT` | production | Redirect requests unless the trusted proxy reports HTTPS |
+| `DJANGO_SESSION_COOKIE_SECURE` | production | Restrict session cookies to HTTPS |
+| `DJANGO_CSRF_COOKIE_SECURE` | production | Restrict CSRF cookies to HTTPS |
+| `DJANGO_DB_CONN_MAX_AGE` | optional | Reuse database connections; production defaults to 60 seconds |
+
+## Gunicorn
+
+| Variable | Required | Purpose |
+| --- | --- | --- |
+| `GUNICORN_WORKERS` | optional | Worker processes; production default is `3` |
+| `GUNICORN_THREADS` | optional | Threads per worker; production default is `2` |
+| `GUNICORN_TIMEOUT` | optional | Hard request timeout in seconds |
+| `GUNICORN_GRACEFUL_TIMEOUT` | optional | Graceful worker shutdown timeout |
+| `GUNICORN_KEEPALIVE` | optional | Keep-alive duration in seconds |
+| `GUNICORN_MAX_REQUESTS` | optional | Recycle workers after this many requests |
+| `GUNICORN_MAX_REQUESTS_JITTER` | optional | Randomize worker recycling to avoid simultaneous restarts |
 
 ## Database
 

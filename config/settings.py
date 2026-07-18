@@ -5,21 +5,25 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+
+def env_bool(name: str, default: bool = False) -> bool:
+    return os.getenv(name, str(default)).strip().lower() in {"1", "true", "yes", "on"}
+
+
+def env_list(name: str, default: str = "") -> list[str]:
+    return [item.strip() for item in os.getenv(name, default).split(",") if item.strip()]
+
 BASE_DIR = Path(__file__).resolve().parent.parent
 REPO_ROOT = BASE_DIR.parent
 
 SECRET_KEY = os.getenv("DJANGO_SECRET_KEY", "django-insecure-wahi-local-dev-key")
-DEBUG = os.getenv("DJANGO_DEBUG", "true").lower() == "true"
-ALLOWED_HOSTS = os.getenv("DJANGO_ALLOWED_HOSTS", "localhost,127.0.0.1").split(",")
-CORS_ALLOWED_ORIGINS = os.getenv(
+DEBUG = env_bool("DJANGO_DEBUG", True)
+ALLOWED_HOSTS = env_list("DJANGO_ALLOWED_HOSTS", "localhost,127.0.0.1")
+CORS_ALLOWED_ORIGINS = env_list(
     "DJANGO_CORS_ALLOWED_ORIGINS",
     "http://localhost:3000,http://127.0.0.1:3000",
-).split(",")
-CSRF_TRUSTED_ORIGINS = [
-    origin.strip()
-    for origin in os.getenv("DJANGO_CSRF_TRUSTED_ORIGINS", "").split(",")
-    if origin.strip()
-]
+)
+CSRF_TRUSTED_ORIGINS = env_list("DJANGO_CSRF_TRUSTED_ORIGINS")
 
 
 INSTALLED_APPS = [
@@ -45,6 +49,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
+    "whitenoise.middleware.WhiteNoiseMiddleware",
     "corsheaders.middleware.CorsMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
@@ -73,6 +78,14 @@ TEMPLATES = [
 
 WSGI_APPLICATION = "config.wsgi.application"
 
+SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+USE_X_FORWARDED_HOST = env_bool("DJANGO_USE_X_FORWARDED_HOST", not DEBUG)
+SECURE_SSL_REDIRECT = env_bool("DJANGO_SECURE_SSL_REDIRECT", not DEBUG)
+SESSION_COOKIE_SECURE = env_bool("DJANGO_SESSION_COOKIE_SECURE", not DEBUG)
+CSRF_COOKIE_SECURE = env_bool("DJANGO_CSRF_COOKIE_SECURE", not DEBUG)
+SECURE_CONTENT_TYPE_NOSNIFF = True
+SECURE_REFERRER_POLICY = "same-origin"
+
 
 DATABASES = {
     "default": {
@@ -82,6 +95,8 @@ DATABASES = {
         "PASSWORD": os.getenv("POSTGRES_PASSWORD", ""),
         "HOST": os.getenv("POSTGRES_HOST", ""),
         "PORT": os.getenv("POSTGRES_PORT", ""),
+        "CONN_MAX_AGE": int(os.getenv("DJANGO_DB_CONN_MAX_AGE", "0" if DEBUG else "60")),
+        "CONN_HEALTH_CHECKS": True,
     }
 }
 
@@ -119,6 +134,14 @@ USE_TZ = True
 
 STATIC_URL = "/static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
+STORAGES = {
+    "default": {
+        "BACKEND": "django.core.files.storage.FileSystemStorage",
+    },
+    "staticfiles": {
+        "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
+    },
+}
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
