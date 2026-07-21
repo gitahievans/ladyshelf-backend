@@ -134,6 +134,15 @@ Operational runbook: [`docs/harbor.md`](harbor.md).
 
 ## Pending plan
 
+### AI product-image feature branch (not deployed)
+
+- The `feature/ai-product-images` implementation adds unpublished product drafts, owner-reviewed
+  Cloudflare Workers AI candidates, Supabase draft/final paths, and a two-minute worker timer artifact.
+- No production credentials were configured, no provider calls were made, no production migration
+  was applied, and `ladyshelf-product-images.timer` remains absent/disabled in production.
+- A future approved release must back up PostgreSQL, configure protected backend variables, apply
+  migrations, deploy both feature branches, and validate one noncritical draft before timer activation.
+
 ### 1. Post-deployment operations
 
 - Configure or migrate Supabase JWT signing so the public JWKS endpoint exposes at least one asymmetric key, obtain a valid test-user access token without recording it, and validate a successful authenticated API request.

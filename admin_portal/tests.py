@@ -561,6 +561,51 @@ class AdminCatalogInventorySettingsTests(TestCase):
         self.assertEqual(str(variant_response.json()["adminId"]), str(ProductVariant.objects.get(external_id=variant_response.json()["id"]).pk))
         self.assertTrue(variant_response.json()["sku"])
 
+    def test_owner_can_create_unpublished_product_without_images_then_publish_manual_gallery(self):
+        self.client.force_authenticate(user=self.owner)
+        payload = {
+            "slug": "owner-draft-product",
+            "name": "Owner Draft Product",
+            "brand": "Wahi Fashion",
+            "categorySlug": self.product.category.slug,
+            "description": "Draft from admin dashboard.",
+            "images": [],
+            "price": 3200,
+            "originalPrice": None,
+            "currency": "KES",
+            "badge": "",
+            "tags": [],
+            "rating": "0",
+            "review_count": 0,
+            "isFeatured": False,
+            "isNewArrival": False,
+            "material": "",
+            "careInstructions": "",
+            "created_at": self.product.created_at.isoformat(),
+        }
+
+        create_response = self.client.post("/api/v1/admin/products", payload, format="json")
+        created = Product.objects.get(slug="owner-draft-product")
+        blocked_publish = self.client.patch(
+            f"/api/v1/admin/products/{created.pk}",
+            {"isPublished": True},
+            format="json",
+        )
+        publish_response = self.client.patch(
+            f"/api/v1/admin/products/{created.pk}",
+            {
+                "images": ["https://example.com/manual.webp"],
+                "isPublished": True,
+            },
+            format="json",
+        )
+
+        self.assertEqual(create_response.status_code, 201)
+        self.assertFalse(create_response.json()["isPublished"])
+        self.assertEqual(blocked_publish.status_code, 400)
+        self.assertEqual(publish_response.status_code, 200)
+        self.assertTrue(publish_response.json()["isPublished"])
+
     def test_attendant_can_update_stock_but_not_settings(self):
         self.client.force_authenticate(user=self.attendant)
 

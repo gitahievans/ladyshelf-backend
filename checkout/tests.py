@@ -60,6 +60,27 @@ class CheckoutQuoteTests(TestCase):
             }
         ]
 
+    def test_unpublished_product_is_unavailable_for_checkout(self):
+        self.product.is_published = False
+        self.product.save(update_fields=["is_published", "updated_at"])
+
+        response = self.client.post(
+            "/api/v1/checkout/quote",
+            {
+                "cart": self.build_cart(),
+                "deliveryDetails": {
+                    "fullName": "Akinyi Otieno",
+                    "email": "akinyi@example.com",
+                    "phone": "+254700000000",
+                    "deliveryMethod": "pickup",
+                },
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("no longer available", response.json()["detail"])
+
     def test_pickup_quote_is_prepay_only_with_zero_delivery_fee(self):
         self.variant.image_url = "https://example.com/variant-blazer.jpg"
         self.variant.save(update_fields=["image_url", "updated_at"])

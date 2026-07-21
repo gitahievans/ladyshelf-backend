@@ -10,7 +10,12 @@ from catalog.models import Category, Product, ProductVariant
 from catalog.serializers import CategorySerializer, ProductSerializer, ProductVariantSerializer
 from checkout.models import DeliverySettings, DeliveryZone, PickupLocation
 from admin_portal.access import get_staff_access
-from admin_portal.models import AdminStaffAccess
+from admin_portal.models import (
+    AdminStaffAccess,
+    ImageGenerationBatch,
+    ProductImageCandidate,
+    ProductImageGeneration,
+)
 from admin_portal.permissions import IsAdminOwner, IsAdminStaff
 from admin_portal.serializers import (
     AdminCategoryWriteSerializer,
@@ -33,9 +38,24 @@ from admin_portal.serializers import (
     AdminStaffUpdateSerializer,
     AdminStockUpdateSerializer,
     AdminVariantWriteSerializer,
+    ImageGenerationBatchCreateSerializer,
+    ImageGenerationBatchSerializer,
+    ProductImageCandidateSerializer,
+    ProductImageGenerationSerializer,
     AdminStaffUserSerializer,
     serialize_permission_set,
 )
+from admin_portal.image_generation.services import (
+    ImageGenerationWorkflowError,
+    approve_candidate,
+    create_batch,
+    publish_generation,
+    recompute_batch,
+    regenerate_candidate,
+    reject_candidate,
+    restore_previous_gallery,
+)
+from admin_portal.image_generation.storage import ImageStorageError
 from customers.models import CustomerProfile
 from orders.models import Order
 from payments.receipts import issue_receipt_for_paid_order, resend_receipt_for_order
@@ -508,6 +528,26 @@ class AdminProductDetailView(OwnerMutationMixin, generics.RetrieveUpdateDestroyA
         super().partial_update(request, *args, **kwargs)
         return Response(ProductSerializer(self.get_object()).data)
 
+    def destroy(self, request, *args, **kwargs):
+        product = self.get_object()
+        active_generations = product.image_generations.filter(
+            status__in=ProductImageGeneration.ACTIVE_STATUSES
+        )
+        if ProductImageCandidate.objects.filter(
+            generation__in=active_generations,
+            storage_path__gt="",
+        ).exists():
+            return Response(
+                {"detail": "Resolve the active generated-image review before deleting this product."},
+                status=status.HTTP_409_CONFLICT,
+            )
+        batch_ids = list(active_generations.values_list("batch_id", flat=True))
+        active_generations.update(status=ProductImageGeneration.Status.CANCELLED)
+        product.delete()
+        for batch_id in batch_ids:
+            recompute_batch(batch_id)
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
 
 class AdminProductVariantCreateView(generics.CreateAPIView):
     permission_classes = [IsAuthenticated, IsAdminOwner]
@@ -617,3 +657,153 @@ class AdminPickupLocationDetailView(OwnerMutationMixin, generics.RetrieveUpdateD
 
     def get_queryset(self):
         return PickupLocation.objects.all()
+
+
+def image_generation_queryset():
+    return ImageGenerationBatch.objects.select_related("requested_by").prefetch_related(
+        "generations",
+        "generations__product",
+        "generations__candidates",
+    )
+
+
+def workflow_error_response(error: ImageGenerationWorkflowError) -> Response:
+    conflict_codes = {"active_generation", "invalid_candidate_state", "incomplete_approval"}
+    return Response(
+        {"detail": error.safe_message, "code": error.code},
+        status=(
+            status.HTTP_409_CONFLICT
+            if error.code in conflict_codes
+            else status.HTTP_400_BAD_REQUEST
+        ),
+    )
+
+
+def storage_error_response(error: ImageStorageError) -> Response:
+    return Response(
+        {"detail": error.safe_message, "code": error.code},
+        status=status.HTTP_503_SERVICE_UNAVAILABLE,
+    )
+
+
+class ImageGenerationBatchListCreateView(APIView):
+    permission_classes = [IsAuthenticated, IsAdminStaff]
+    throttle_scope = "admin"
+
+    def get(self, request):
+        queryset = image_generation_queryset()
+        if request.query_params.get("status") == "active":
+            queryset = queryset.exclude(
+                status__in={
+                    ImageGenerationBatch.Status.COMPLETED,
+                    ImageGenerationBatch.Status.CANCELLED,
+                }
+            )
+        return Response(ImageGenerationBatchSerializer(queryset[:25], many=True).data)
+
+    def post(self, request):
+        if not IsAdminOwner().has_permission(request, self):
+            return Response(
+                {"detail": IsAdminOwner.message},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+        serializer = ImageGenerationBatchCreateSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        try:
+            batch = create_batch(
+                product_ids=serializer.validated_data["productIds"],
+                requested_by=request.user,
+            )
+        except ImageGenerationWorkflowError as error:
+            return workflow_error_response(error)
+        batch = image_generation_queryset().get(pk=batch.pk)
+        return Response(ImageGenerationBatchSerializer(batch).data, status=status.HTTP_201_CREATED)
+
+
+class ImageGenerationBatchDetailView(generics.RetrieveAPIView):
+    permission_classes = [IsAuthenticated, IsAdminStaff]
+    serializer_class = ImageGenerationBatchSerializer
+    throttle_scope = "admin"
+    lookup_url_kwarg = "batch_id"
+
+    def get_queryset(self):
+        return image_generation_queryset()
+
+
+class ProductImageGenerationListView(generics.ListAPIView):
+    permission_classes = [IsAuthenticated, IsAdminStaff]
+    serializer_class = ProductImageGenerationSerializer
+    throttle_scope = "admin"
+
+    def get_queryset(self):
+        return ProductImageGeneration.objects.filter(
+            product_id=self.kwargs["pk"]
+        ).select_related("product").prefetch_related("candidates")
+
+
+class CandidateApproveView(APIView):
+    permission_classes = [IsAuthenticated, IsAdminOwner]
+    throttle_scope = "admin"
+
+    def post(self, request, candidate_id):
+        try:
+            candidate = approve_candidate(candidate_id=candidate_id, reviewer=request.user)
+        except ImageGenerationWorkflowError as error:
+            return workflow_error_response(error)
+        return Response(ProductImageCandidateSerializer(candidate).data)
+
+
+class CandidateRejectView(APIView):
+    permission_classes = [IsAuthenticated, IsAdminOwner]
+    throttle_scope = "admin"
+
+    def post(self, request, candidate_id):
+        try:
+            candidate = reject_candidate(candidate_id=candidate_id, reviewer=request.user)
+        except ImageGenerationWorkflowError as error:
+            return workflow_error_response(error)
+        except ImageStorageError as error:
+            return storage_error_response(error)
+        return Response(ProductImageCandidateSerializer(candidate).data)
+
+
+class CandidateRegenerateView(APIView):
+    permission_classes = [IsAuthenticated, IsAdminOwner]
+    throttle_scope = "admin"
+
+    def post(self, request, candidate_id):
+        try:
+            candidate = regenerate_candidate(candidate_id=candidate_id)
+        except ImageGenerationWorkflowError as error:
+            return workflow_error_response(error)
+        except ImageStorageError as error:
+            return storage_error_response(error)
+        return Response(ProductImageCandidateSerializer(candidate).data)
+
+
+class GenerationPublishView(APIView):
+    permission_classes = [IsAuthenticated, IsAdminOwner]
+    throttle_scope = "admin"
+
+    def post(self, request, generation_id):
+        try:
+            generation = publish_generation(generation_id=generation_id)
+        except ImageGenerationWorkflowError as error:
+            return workflow_error_response(error)
+        except ImageStorageError as error:
+            return storage_error_response(error)
+        generation = ProductImageGeneration.objects.select_related("product").prefetch_related("candidates").get(pk=generation.pk)
+        return Response(ProductImageGenerationSerializer(generation).data)
+
+
+class GenerationRestorePreviousView(APIView):
+    permission_classes = [IsAuthenticated, IsAdminOwner]
+    throttle_scope = "admin"
+
+    def post(self, request, generation_id):
+        try:
+            generation = restore_previous_gallery(generation_id=generation_id)
+        except ImageGenerationWorkflowError as error:
+            return workflow_error_response(error)
+        generation = ProductImageGeneration.objects.select_related("product").prefetch_related("candidates").get(pk=generation.pk)
+        return Response(ProductImageGenerationSerializer(generation).data)

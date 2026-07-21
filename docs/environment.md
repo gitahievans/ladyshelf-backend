@@ -50,6 +50,21 @@ This backend is configured through environment variables loaded from `.env`.
 | --- | --- | --- |
 | `SUPABASE_URL` | yes | Base project URL used for JWT issuer/JWKS |
 | `SUPABASE_JWKS_URL` | optional | Override JWKS URL if needed |
+| `SUPABASE_SERVICE_ROLE_KEY` | image generation only | Server-side Storage access; never expose to a browser |
+| `PRODUCT_IMAGES_BUCKET` | optional | Defaults to the existing `product-images` bucket |
+
+## AI product images
+
+| Variable | Required | Purpose |
+| --- | --- | --- |
+| `IMAGE_GENERATION_ENABLED` | yes | Safe default `false`; gates queue creation and provider processing |
+| `CLOUDFLARE_ACCOUNT_ID` | when enabled | Workers AI account identifier |
+| `CLOUDFLARE_WORKERS_AI_API_TOKEN` | when enabled | Server-only token scoped to Workers AI Read/Edit |
+| `CLOUDFLARE_IMAGE_MODEL` | optional | Defaults to `@cf/black-forest-labs/flux-2-klein-4b` |
+| `CLOUDFLARE_AI_TIMEOUT_SECONDS` | optional | Provider timeout, default `90` seconds |
+
+Do not use a `NEXT_PUBLIC_*` variable for either server-side credential. Candidate files remain
+under `ai-drafts/` until the owner approves all three slots and publishes the complete set.
 
 ## Email / Notifications
 

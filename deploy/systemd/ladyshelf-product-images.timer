@@ -1,0 +1,11 @@
+[Unit]
+Description=Process LadyShelf AI product images every two minutes
+
+[Timer]
+OnBootSec=2min
+OnUnitActiveSec=2min
+Persistent=true
+Unit=ladyshelf-product-images.service
+
+[Install]
+WantedBy=timers.target

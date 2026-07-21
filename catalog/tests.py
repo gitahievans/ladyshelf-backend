@@ -43,3 +43,25 @@ class CatalogApiTests(APITestCase):
         self.assertEqual(response.data["slug"], product.slug)
         self.assertGreater(len(response.data["variants"]), 0)
         self.assertEqual(response.data["variants"][0]["imageUrl"], variant.image_url)
+
+    def test_public_catalog_excludes_unpublished_products_and_counts(self):
+        product = Product.objects.get(slug="obsidian-power-blazer")
+        product.is_published = False
+        product.save(update_fields=["is_published", "updated_at"])
+
+        list_response = self.client.get("/api/v1/catalog/products")
+        detail_response = self.client.get(f"/api/v1/catalog/products/{product.slug}")
+        categories_response = self.client.get("/api/v1/catalog/categories")
+        category_payload = next(
+            item for item in categories_response.data if item["slug"] == product.category.slug
+        )
+
+        self.assertFalse(any(item["slug"] == product.slug for item in list_response.data))
+        self.assertEqual(detail_response.status_code, status.HTTP_404_NOT_FOUND)
+        self.assertEqual(
+            category_payload["productCount"],
+            Product.objects.filter(
+                category=product.category,
+                is_published=True,
+            ).count(),
+        )

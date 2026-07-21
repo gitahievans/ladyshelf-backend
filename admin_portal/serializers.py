@@ -2,7 +2,12 @@ from django.utils.text import slugify
 from rest_framework import serializers
 
 from admin_portal.access import build_permission_set
-from admin_portal.models import AdminStaffAccess
+from admin_portal.models import (
+    AdminStaffAccess,
+    ImageGenerationBatch,
+    ProductImageCandidate,
+    ProductImageGeneration,
+)
 from customers.serializers import AddressSerializer
 from customers.models import CustomerProfile
 from catalog.models import Category, Product, ProductVariant
@@ -376,6 +381,7 @@ class AdminProductWriteSerializer(serializers.ModelSerializer):
     )
     isFeatured = serializers.BooleanField(source="is_featured", required=False)
     isNewArrival = serializers.BooleanField(source="is_new_arrival", required=False)
+    isPublished = serializers.BooleanField(source="is_published", required=False)
     careInstructions = serializers.CharField(
         source="care_instructions",
         allow_blank=True,
@@ -402,10 +408,24 @@ class AdminProductWriteSerializer(serializers.ModelSerializer):
             "review_count",
             "isFeatured",
             "isNewArrival",
+            "isPublished",
             "material",
             "careInstructions",
             "created_at",
         )
+
+    def validate(self, attrs):
+        instance_images = self.instance.images if self.instance else []
+        images = attrs.get("images", instance_images)
+        is_published = attrs.get(
+            "is_published",
+            self.instance.is_published if self.instance else False,
+        )
+        if is_published and not images:
+            raise serializers.ValidationError(
+                {"isPublished": "Add at least one product image before publishing."}
+            )
+        return attrs
 
     def create(self, validated_data):
         external_id = (validated_data.get("external_id") or "").strip()
@@ -464,6 +484,129 @@ class AdminVariantWriteSerializer(serializers.ModelSerializer):
             )
 
         return super().create(validated_data)
+
+
+class ImageGenerationBatchCreateSerializer(serializers.Serializer):
+    productIds = serializers.ListField(
+        child=serializers.IntegerField(min_value=1),
+        min_length=1,
+        max_length=5,
+        allow_empty=False,
+    )
+
+    def validate_productIds(self, value):
+        if len(set(value)) != len(value):
+            raise serializers.ValidationError("Select each product only once.")
+        return value
+
+
+class ProductImageCandidateSerializer(serializers.ModelSerializer):
+    id = serializers.CharField(source="pk")
+    shotType = serializers.CharField(source="shot_type")
+    publicUrl = serializers.SerializerMethodField()
+    mimeType = serializers.CharField(source="mime_type")
+    attemptCount = serializers.IntegerField(source="attempt_count")
+    errorCode = serializers.CharField(source="last_error_code")
+    errorMessage = serializers.CharField(source="last_error_message")
+    reviewedAt = serializers.DateTimeField(source="reviewed_at", allow_null=True)
+
+    class Meta:
+        model = ProductImageCandidate
+        fields = (
+            "id",
+            "shotType",
+            "status",
+            "prompt",
+            "publicUrl",
+            "mimeType",
+            "width",
+            "height",
+            "attemptCount",
+            "errorCode",
+            "errorMessage",
+            "reviewedAt",
+        )
+
+    def get_publicUrl(self, obj: ProductImageCandidate) -> str:
+        if obj.status in {
+            ProductImageCandidate.Status.READY,
+            ProductImageCandidate.Status.APPROVED,
+        }:
+            return obj.public_url
+        return ""
+
+
+class ProductImageGenerationSerializer(serializers.ModelSerializer):
+    id = serializers.CharField(source="pk")
+    productId = serializers.CharField(source="product.pk")
+    productName = serializers.CharField(source="product.name")
+    productSlug = serializers.CharField(source="product.slug")
+    attemptCount = serializers.IntegerField(source="attempt_count")
+    nextAttemptAt = serializers.DateTimeField(source="next_attempt_at", allow_null=True)
+    errorCode = serializers.CharField(source="last_error_code")
+    errorMessage = serializers.CharField(source="last_error_message")
+    previousImages = serializers.JSONField(source="previous_images")
+    canPublish = serializers.SerializerMethodField()
+    canRestore = serializers.SerializerMethodField()
+    candidates = ProductImageCandidateSerializer(many=True)
+
+    class Meta:
+        model = ProductImageGeneration
+        fields = (
+            "id",
+            "productId",
+            "productName",
+            "productSlug",
+            "status",
+            "model",
+            "attemptCount",
+            "nextAttemptAt",
+            "errorCode",
+            "errorMessage",
+            "previousImages",
+            "canPublish",
+            "canRestore",
+            "candidates",
+            "created_at",
+            "updated_at",
+            "published_at",
+        )
+
+    def get_canPublish(self, obj: ProductImageGeneration) -> bool:
+        candidates = list(obj.candidates.all())
+        return len(candidates) == 3 and all(
+            candidate.status == ProductImageCandidate.Status.APPROVED
+            for candidate in candidates
+        )
+
+    def get_canRestore(self, obj: ProductImageGeneration) -> bool:
+        return bool(
+            obj.status == ProductImageGeneration.Status.PUBLISHED
+            and obj.previous_images
+        )
+
+
+class ImageGenerationBatchSerializer(serializers.ModelSerializer):
+    id = serializers.CharField(source="pk")
+    productCount = serializers.IntegerField(source="product_count")
+    createdAt = serializers.DateTimeField(source="created_at")
+    updatedAt = serializers.DateTimeField(source="updated_at")
+    completedAt = serializers.DateTimeField(source="completed_at", allow_null=True)
+    generations = ProductImageGenerationSerializer(many=True)
+
+    class Meta:
+        model = ImageGenerationBatch
+        fields = (
+            "id",
+            "status",
+            "provider",
+            "model",
+            "productCount",
+            "generations",
+            "createdAt",
+            "updatedAt",
+            "completedAt",
+        )
 
 
 class AdminInventoryRowSerializer(serializers.ModelSerializer):

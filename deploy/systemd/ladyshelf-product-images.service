@@ -1,0 +1,9 @@
+[Unit]
+Description=Process one LadyShelf AI product image set
+Requires=docker.service
+After=docker.service
+
+[Service]
+Type=oneshot
+WorkingDirectory=/opt/ladyshelf
+ExecStart=/usr/bin/docker compose --env-file /opt/ladyshelf/secrets/backend.env -f /opt/ladyshelf/compose.prod.yml exec -T backend python manage.py process_product_image_generations --limit 1
