@@ -40,6 +40,7 @@ from admin_portal.serializers import (
     AdminVariantWriteSerializer,
     CandidateRegenerationSerializer,
     ImageGenerationBatchCreateSerializer,
+    ImageGenerationPublishSerializer,
     ImageGenerationBatchSerializer,
     ProductImageCandidateSerializer,
     ProductImageGenerationSerializer,
@@ -802,8 +803,13 @@ class GenerationPublishView(APIView):
     throttle_scope = "admin"
 
     def post(self, request, generation_id):
+        serializer = ImageGenerationPublishSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
         try:
-            generation = publish_generation(generation_id=generation_id)
+            generation = publish_generation(
+                generation_id=generation_id,
+                publication_mode=serializer.validated_data["publicationMode"],
+            )
         except ImageGenerationWorkflowError as error:
             return workflow_error_response(error)
         except ImageStorageError as error:

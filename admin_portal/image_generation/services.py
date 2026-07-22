@@ -101,6 +101,11 @@ def create_batch(*, product_ids: list[int], requested_by) -> ImageGenerationBatc
     for product_id in product_ids:
         product = products_by_id[product_id]
         snapshot = product_snapshot(product)
+        if not snapshot["colors"]:
+            raise ImageGenerationWorkflowError(
+                "missing_variant_color",
+                f"{product.name} needs at least one colored variant before AI images can be generated.",
+            )
         overrides_by_shot = resolve_shot_overrides(
             snapshot,
             {shot_type: {} for shot_type in SHOT_ORDER},
@@ -109,7 +114,6 @@ def create_batch(*, product_ids: list[int], requested_by) -> ImageGenerationBatc
             batch=batch,
             product=product,
             source_snapshot=snapshot,
-            previous_images=list(product.images),
             model=settings.CLOUDFLARE_IMAGE_MODEL,
         )
         for shot_type in SHOT_ORDER:
@@ -494,8 +498,16 @@ def regenerate_candidate(
 
 
 def publish_generation(
-    *, generation_id: object, storage: SupabaseImageStorage | None = None
+    *,
+    generation_id: object,
+    publication_mode: str,
+    storage: SupabaseImageStorage | None = None,
 ) -> ProductImageGeneration:
+    if publication_mode not in ProductImageGeneration.PublicationMode.values:
+        raise ImageGenerationWorkflowError(
+            "invalid_publication_mode",
+            "Choose whether to add the AI images to the gallery or replace the gallery.",
+        )
     storage = storage or SupabaseImageStorage()
     copied_paths: list[str] = []
     try:
@@ -506,6 +518,11 @@ def publish_generation(
                 .get(pk=generation_id)
             )
             if generation.status == ProductImageGeneration.Status.PUBLISHED:
+                if generation.publication_mode != publication_mode:
+                    raise ImageGenerationWorkflowError(
+                        "already_published",
+                        "This generated image set has already been published.",
+                    )
                 return generation
             candidates = {
                 candidate.shot_type: candidate
@@ -535,19 +552,31 @@ def publish_generation(
                 candidate.public_url = final_urls[-1]
                 candidate.save(update_fields=["storage_path", "public_url", "updated_at"])
 
-            if not generation.previous_images:
-                generation.previous_images = old_images
-            ProductVariant.objects.filter(
-                product=product,
-                image_url__in=old_images,
-            ).update(image_url="")
-            product.images = final_urls
+            generation.previous_images = old_images
+            generation.publication_mode = publication_mode
+            if publication_mode == ProductImageGeneration.PublicationMode.APPEND:
+                resulting_images = [*old_images, *final_urls]
+            else:
+                resulting_images = final_urls
+                removed_images = set(old_images) - set(resulting_images)
+                if removed_images:
+                    ProductVariant.objects.filter(
+                        product=product,
+                        image_url__in=removed_images,
+                    ).update(image_url="")
+            product.images = resulting_images
             product.is_published = True
             product.save(update_fields=["images", "is_published", "updated_at"])
             generation.status = ProductImageGeneration.Status.PUBLISHED
             generation.published_at = timezone.now()
             generation.save(
-                update_fields=["status", "previous_images", "published_at", "updated_at"]
+                update_fields=[
+                    "status",
+                    "previous_images",
+                    "publication_mode",
+                    "published_at",
+                    "updated_at",
+                ]
             )
             transaction.on_commit(lambda: recompute_batch(generation.batch_id))
             return generation
@@ -569,11 +598,14 @@ def restore_previous_gallery(*, generation_id: object) -> ProductImageGeneration
     )
     if generation.status != ProductImageGeneration.Status.PUBLISHED:
         raise ImageGenerationWorkflowError("not_published", "Only a published generated gallery can be restored.")
-    if not generation.previous_images:
-        raise ImageGenerationWorkflowError("no_previous_gallery", "There is no previous gallery to restore.")
     product = Product.objects.select_for_update().get(pk=generation.product_id)
     current_images = list(product.images)
-    ProductVariant.objects.filter(product=product, image_url__in=current_images).update(image_url="")
+    removed_images = set(current_images) - set(generation.previous_images)
+    if removed_images:
+        ProductVariant.objects.filter(
+            product=product,
+            image_url__in=removed_images,
+        ).update(image_url="")
     product.images = list(generation.previous_images)
     product.save(update_fields=["images", "updated_at"])
     return generation

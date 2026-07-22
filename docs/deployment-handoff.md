@@ -1,6 +1,6 @@
 # Deployment handoff
 
-Last updated: 2026-07-18 (Africa/Nairobi)
+Last updated: 2026-07-22 (Africa/Nairobi)
 
 ## Resume point
 
@@ -146,6 +146,13 @@ Operational runbook: [`docs/harbor.md`](harbor.md).
   candidate prompt-policy/revision/override audit fields, v2 prompt allocation, server-side guarded
   controls, and scoped regeneration. This extension has not been migrated, deployed, or exercised
   against real Cloudflare or Supabase services.
+- The local feature branch also includes the mixed-gallery publication extension. Publication now
+  requires an audited `append` or `replace` mode, snapshots the locked product gallery immediately
+  before publication, preserves variant image assignments in append mode, clears only removed URL
+  assignments in replace mode, and supports exact empty or populated gallery rollback. Historical
+  published generations are backfilled as `replace`; unpublished generations remain without a mode
+  until publication. This migration has been tested only in the local PostgreSQL test database and
+  has not been applied to the local development database or production.
 
 ### 1. Post-deployment operations
 

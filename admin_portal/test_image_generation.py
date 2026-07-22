@@ -1,8 +1,10 @@
 import base64
+import importlib
 import io
 from unittest.mock import Mock, patch
 
 import requests
+from django.apps import apps
 from django.core.management import call_command
 from django.test import TestCase, override_settings
 from PIL import Image
@@ -283,6 +285,45 @@ class StorageTests(TestCase):
         self.assertNotIn("service-key", str(ImageStorageError("storage_upload", "safe")))
 
 
+class PublicationModeBackfillTests(TestCase):
+    def test_only_historical_published_generations_are_backfilled_as_replace(self):
+        owner = CustomerProfile.objects.create(
+            supabase_user_id="publication-migration-owner",
+            email="publication-migration@test.local",
+        )
+        products = list(Product.objects.all()[:2])
+        batch = ImageGenerationBatch.objects.create(
+            model="@cf/black-forest-labs/flux-2-klein-4b",
+            product_count=2,
+            requested_by=owner,
+        )
+        published = ProductImageGeneration.objects.create(
+            batch=batch,
+            product=products[0],
+            status=ProductImageGeneration.Status.PUBLISHED,
+            model=batch.model,
+        )
+        unpublished = ProductImageGeneration.objects.create(
+            batch=batch,
+            product=products[1],
+            status=ProductImageGeneration.Status.READY_FOR_REVIEW,
+            model=batch.model,
+        )
+        migration = importlib.import_module(
+            "admin_portal.migrations.0004_generation_publication_mode"
+        )
+
+        migration.backfill_published_generation_modes(
+            apps,
+            None,
+        )
+
+        published.refresh_from_db()
+        unpublished.refresh_from_db()
+        self.assertEqual(published.publication_mode, "replace")
+        self.assertIsNone(unpublished.publication_mode)
+
+
 @override_settings(IMAGE_GENERATION_ENABLED=True, CLOUDFLARE_IMAGE_MODEL="@cf/black-forest-labs/flux-2-klein-4b")
 class GenerationWorkflowTests(TestCase):
     def setUp(self):
@@ -311,6 +352,13 @@ class GenerationWorkflowTests(TestCase):
         generation.refresh_from_db()
         self.assertEqual(generation.status, ProductImageGeneration.Status.READY_FOR_REVIEW)
 
+    def approve_generation(self, generation: ProductImageGeneration):
+        self.generate_ready(generation)
+        for candidate in generation.candidates.all():
+            approve_candidate(candidate_id=candidate.pk, reviewer=self.owner)
+        generation.refresh_from_db()
+        self.assertEqual(generation.status, ProductImageGeneration.Status.APPROVED)
+
     def test_owner_can_create_one_to_five_and_invalid_selections_fail(self):
         for count in (1, 5):
             batch = self.make_batch(count)
@@ -326,6 +374,16 @@ class GenerationWorkflowTests(TestCase):
         with self.assertRaises(ImageGenerationWorkflowError) as raised:
             self.make_batch()
         self.assertEqual(raised.exception.code, "active_generation")
+
+    def test_product_requires_a_colored_variant_before_queueing(self):
+        product = self.products[0]
+        product.variants.update(color="")
+
+        with self.assertRaises(ImageGenerationWorkflowError) as raised:
+            create_batch(product_ids=[product.pk], requested_by=self.owner)
+
+        self.assertEqual(raised.exception.code, "missing_variant_color")
+        self.assertFalse(ImageGenerationBatch.objects.exists())
 
     def test_api_permissions_snapshot_and_admin_draft_visibility(self):
         self.products[0].is_published = False
@@ -406,7 +464,11 @@ class GenerationWorkflowTests(TestCase):
         generation.refresh_from_db()
         self.assertEqual(generation.status, ProductImageGeneration.Status.APPROVED)
 
-        publish_generation(generation_id=generation.pk, storage=self.storage)
+        publish_generation(
+            generation_id=generation.pk,
+            publication_mode=ProductImageGeneration.PublicationMode.REPLACE,
+            storage=self.storage,
+        )
         product.refresh_from_db()
         variant.refresh_from_db()
         self.assertTrue(product.is_published)
@@ -425,7 +487,11 @@ class GenerationWorkflowTests(TestCase):
         product.refresh_from_db()
         self.assertEqual(product.images, published_images)
 
-        publish_generation(generation_id=generation.pk, storage=self.storage)
+        publish_generation(
+            generation_id=generation.pk,
+            publication_mode=ProductImageGeneration.PublicationMode.REPLACE,
+            storage=self.storage,
+        )
         product.refresh_from_db()
         self.assertEqual(len(product.images), 3)
 
@@ -443,11 +509,152 @@ class GenerationWorkflowTests(TestCase):
         self.storage.fail_copy_at = 1
 
         with self.assertRaises(ImageStorageError):
-            publish_generation(generation_id=generation.pk, storage=self.storage)
+            publish_generation(
+                generation_id=generation.pk,
+                publication_mode=ProductImageGeneration.PublicationMode.REPLACE,
+                storage=self.storage,
+            )
 
         generation.product.refresh_from_db()
         self.assertEqual(generation.product.images, old_images)
         self.assertTrue(self.storage.deleted)
+
+    def test_database_failure_after_copy_keeps_gallery_and_cleans_every_final_copy(self):
+        batch = self.make_batch()
+        generation = batch.generations.get()
+        old_images = list(generation.product.images)
+        self.approve_generation(generation)
+
+        with patch.object(Product, "save", side_effect=RuntimeError("database write failed")):
+            with self.assertRaises(RuntimeError):
+                publish_generation(
+                    generation_id=generation.pk,
+                    publication_mode=ProductImageGeneration.PublicationMode.APPEND,
+                    storage=self.storage,
+                )
+
+        generation.refresh_from_db()
+        generation.product.refresh_from_db()
+        self.assertEqual(generation.status, ProductImageGeneration.Status.APPROVED)
+        self.assertIsNone(generation.publication_mode)
+        self.assertEqual(generation.product.images, old_images)
+        self.assertEqual(
+            set(self.storage.deleted),
+            {destination for _source, destination in self.storage.copied},
+        )
+
+    def test_append_publication_preserves_galleries_and_variant_assignments(self):
+        for image_count in (0, 1, 3, 5):
+            with self.subTest(image_count=image_count):
+                product = self.products[image_count % len(self.products)]
+                ProductImageGeneration.objects.filter(product=product).delete()
+                old_images = [f"https://example.com/manual-{index}.webp" for index in range(image_count)]
+                product.images = old_images
+                product.save(update_fields=["images", "updated_at"])
+                variant = product.variants.first()
+                variant.image_url = old_images[0] if old_images else ""
+                variant.save(update_fields=["image_url", "updated_at"])
+                batch = create_batch(product_ids=[product.pk], requested_by=self.owner)
+                generation = batch.generations.get()
+                self.approve_generation(generation)
+
+                publish_generation(
+                    generation_id=generation.pk,
+                    publication_mode=ProductImageGeneration.PublicationMode.APPEND,
+                    storage=self.storage,
+                )
+
+                product.refresh_from_db()
+                variant.refresh_from_db()
+                generation.refresh_from_db()
+                self.assertEqual(product.images[:image_count], old_images)
+                self.assertEqual(len(product.images), image_count + 3)
+                self.assertEqual(
+                    [url.split("/")[-1] for url in product.images[-3:]],
+                    ["hero.webp", "alternate.webp", "detail.webp"],
+                )
+                self.assertEqual(variant.image_url, old_images[0] if old_images else "")
+                self.assertEqual(generation.previous_images, old_images)
+                self.assertEqual(generation.publication_mode, "append")
+
+                restore_previous_gallery(generation_id=generation.pk)
+                product.refresh_from_db()
+                variant.refresh_from_db()
+                self.assertEqual(product.images, old_images)
+                self.assertEqual(variant.image_url, old_images[0] if old_images else "")
+
+    def test_replace_snapshots_gallery_at_publication_and_clears_only_removed_variant_urls(self):
+        product = self.products[0]
+        queued_images = ["https://example.com/queued.webp"]
+        product.images = queued_images
+        product.save(update_fields=["images", "updated_at"])
+        batch = create_batch(product_ids=[product.pk], requested_by=self.owner)
+        generation = batch.generations.get()
+        self.assertEqual(generation.previous_images, [])
+        self.approve_generation(generation)
+
+        publication_images = [
+            "https://example.com/manual-after-queue-1.webp",
+            "https://example.com/manual-after-queue-2.webp",
+        ]
+        product.images = publication_images
+        product.save(update_fields=["images", "updated_at"])
+        removed_variant, unrelated_variant = list(product.variants.all()[:2])
+        removed_variant.image_url = publication_images[0]
+        unrelated_variant.image_url = "https://example.com/not-in-gallery.webp"
+        removed_variant.save(update_fields=["image_url", "updated_at"])
+        unrelated_variant.save(update_fields=["image_url", "updated_at"])
+
+        publish_generation(
+            generation_id=generation.pk,
+            publication_mode=ProductImageGeneration.PublicationMode.REPLACE,
+            storage=self.storage,
+        )
+
+        generation.refresh_from_db()
+        product.refresh_from_db()
+        removed_variant.refresh_from_db()
+        unrelated_variant.refresh_from_db()
+        self.assertEqual(generation.previous_images, publication_images)
+        self.assertEqual(generation.publication_mode, "replace")
+        self.assertEqual(len(product.images), 3)
+        self.assertEqual(removed_variant.image_url, "")
+        self.assertEqual(unrelated_variant.image_url, "https://example.com/not-in-gallery.webp")
+
+        restore_previous_gallery(generation_id=generation.pk)
+        product.refresh_from_db()
+        self.assertEqual(product.images, publication_images)
+
+    def test_publish_api_requires_an_explicit_publication_mode(self):
+        batch = self.make_batch()
+        generation = batch.generations.get()
+        self.approve_generation(generation)
+        self.client.force_authenticate(user=self.owner)
+        path = f"/api/v1/admin/image-generations/{generation.pk}/publish"
+        original_gallery_count = len(generation.product.images)
+
+        missing = self.client.post(path, {}, format="json")
+        invalid = self.client.post(path, {"publicationMode": "merge"}, format="json")
+        with patch(
+            "admin_portal.image_generation.services.SupabaseImageStorage",
+            return_value=self.storage,
+        ):
+            valid = self.client.post(
+                path,
+                {"publicationMode": "append"},
+                format="json",
+            )
+
+        self.assertEqual(missing.status_code, 400)
+        self.assertEqual(invalid.status_code, 400)
+        self.assertEqual(valid.status_code, 200)
+        self.assertEqual(valid.json()["publicationMode"], "append")
+        self.assertEqual(
+            valid.json()["currentGalleryCount"],
+            original_gallery_count + 3,
+        )
+        generation.refresh_from_db()
+        self.assertEqual(generation.publication_mode, "append")
 
     def test_hero_regeneration_invalidates_dependent_shots(self):
         batch = self.make_batch()

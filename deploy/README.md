@@ -75,6 +75,11 @@ requeue only their own draft. Explicit regeneration deletes the affected draft o
 normalized structured controls, increments the revision, and derives a new seed. Automatic worker
 retries reuse the already stored prompt and seed.
 
+Publishing an approved set requires an explicit `append` or `replace` choice. Append keeps the
+locked product gallery and adds Hero, Alternate, and Detail at the end. Replace uses only the three
+generated images. Both modes capture the exact locked gallery immediately before publication for
+rollback, and neither mode deletes superseded storage objects automatically.
+
 ## Database backup and restore
 
 `backup-postgres.sh` creates a PostgreSQL custom-format dump in `/opt/ladyshelf/backups` and deletes local dumps older than 14 days. A local dump does not protect against VM or disk loss; copy each completed dump to separately managed off-server storage before launch.

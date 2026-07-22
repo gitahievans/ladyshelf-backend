@@ -503,6 +503,12 @@ class ImageGenerationBatchCreateSerializer(serializers.Serializer):
         return value
 
 
+class ImageGenerationPublishSerializer(serializers.Serializer):
+    publicationMode = serializers.ChoiceField(
+        choices=ProductImageGeneration.PublicationMode.values,
+    )
+
+
 BODY_PROFILE_CHOICES = ("automatic", "slim", "curvy", "athletic")
 SKIN_TONE_CHOICES = ("automatic", "light_brown", "medium_brown", "deep_brown")
 COMPOSITION_CHOICES = ("automatic", "standing", "seated", "walking", "three_quarter")
@@ -693,6 +699,8 @@ class ProductImageGenerationSerializer(serializers.ModelSerializer):
     errorCode = serializers.CharField(source="last_error_code")
     errorMessage = serializers.CharField(source="last_error_message")
     previousImages = serializers.JSONField(source="previous_images")
+    publicationMode = serializers.CharField(source="publication_mode", allow_null=True)
+    currentGalleryCount = serializers.SerializerMethodField()
     canPublish = serializers.SerializerMethodField()
     canRestore = serializers.SerializerMethodField()
     candidates = ProductImageCandidateSerializer(many=True)
@@ -712,6 +720,8 @@ class ProductImageGenerationSerializer(serializers.ModelSerializer):
             "errorCode",
             "errorMessage",
             "previousImages",
+            "publicationMode",
+            "currentGalleryCount",
             "catalogColors",
             "canPublish",
             "canRestore",
@@ -729,10 +739,10 @@ class ProductImageGenerationSerializer(serializers.ModelSerializer):
         )
 
     def get_canRestore(self, obj: ProductImageGeneration) -> bool:
-        return bool(
-            obj.status == ProductImageGeneration.Status.PUBLISHED
-            and obj.previous_images
-        )
+        return obj.status == ProductImageGeneration.Status.PUBLISHED
+
+    def get_currentGalleryCount(self, obj: ProductImageGeneration) -> int:
+        return len(obj.product.images)
 
     def get_catalogColors(self, obj: ProductImageGeneration) -> list[str]:
         return list(obj.source_snapshot.get("colors", []))

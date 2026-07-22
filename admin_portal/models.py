@@ -56,6 +56,10 @@ class ImageGenerationBatch(models.Model):
 
 
 class ProductImageGeneration(models.Model):
+    class PublicationMode(models.TextChoices):
+        APPEND = "append", "Append"
+        REPLACE = "replace", "Replace"
+
     class Status(models.TextChoices):
         QUEUED = "queued", "Queued"
         GENERATING = "generating", "Generating"
@@ -88,6 +92,12 @@ class ProductImageGeneration(models.Model):
     status = models.CharField(max_length=30, choices=Status.choices, default=Status.QUEUED)
     source_snapshot = models.JSONField(default=dict)
     previous_images = models.JSONField(default=list)
+    publication_mode = models.CharField(
+        max_length=20,
+        choices=PublicationMode.choices,
+        null=True,
+        blank=True,
+    )
     model = models.CharField(max_length=160)
     attempt_count = models.PositiveSmallIntegerField(default=0)
     next_attempt_at = models.DateTimeField(null=True, blank=True)
