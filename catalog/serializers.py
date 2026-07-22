@@ -23,6 +23,7 @@ class ProductSerializer(serializers.ModelSerializer):
     reviewCount = serializers.IntegerField(source="review_count")
     isFeatured = serializers.BooleanField(source="is_featured")
     isNewArrival = serializers.BooleanField(source="is_new_arrival")
+    isPublished = serializers.BooleanField(source="is_published")
     material = serializers.CharField(allow_blank=True)
     careInstructions = serializers.CharField(source="care_instructions", allow_blank=True)
     createdAt = serializers.DateTimeField(source="created_at")
@@ -49,6 +50,7 @@ class ProductSerializer(serializers.ModelSerializer):
             "reviewCount",
             "isFeatured",
             "isNewArrival",
+            "isPublished",
             "material",
             "careInstructions",
             "createdAt",
@@ -69,4 +71,4 @@ class CategorySerializer(serializers.ModelSerializer):
         if annotated_count is not None:
             return annotated_count
 
-        return obj.products.aggregate(product_count=Count("id"))["product_count"] or 0
+        return obj.products.filter(is_published=True).aggregate(product_count=Count("id"))["product_count"] or 0

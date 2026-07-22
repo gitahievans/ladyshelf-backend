@@ -14,7 +14,10 @@ class WishlistCollectionView(APIView):
     throttle_scope = "wishlist"
 
     def get(self, request):
-        items = WishlistItem.objects.filter(customer=request.user).select_related("product")
+        items = WishlistItem.objects.filter(
+            customer=request.user,
+            product__is_published=True,
+        ).select_related("product")
         serializer = WishlistItemSerializer(items, many=True)
 
         return Response(
@@ -26,7 +29,11 @@ class WishlistCollectionView(APIView):
     def post(self, request):
         serializer = WishlistMutationSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        product = get_object_or_404(Product, external_id=serializer.validated_data["productId"])
+        product = get_object_or_404(
+            Product,
+            external_id=serializer.validated_data["productId"],
+            is_published=True,
+        )
         WishlistItem.objects.get_or_create(customer=request.user, product=product)
 
         return Response({"productId": product.external_id}, status=status.HTTP_201_CREATED)

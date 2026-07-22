@@ -56,6 +56,30 @@ systemctl daemon-reload
 systemctl enable --now ladyshelf-expire-orders.timer ladyshelf-backup.timer
 ```
 
+The product-image timer is intentionally separate and must remain disabled until Cloudflare and
+Supabase credentials are configured and its activation receives explicit approval:
+
+```bash
+systemctl enable --now ladyshelf-product-images.timer
+```
+
+Inspect or manually process the queue without enabling the timer:
+
+```bash
+docker compose --env-file /opt/ladyshelf/secrets/backend.env -f /opt/ladyshelf/compose.prod.yml exec -T backend python manage.py process_product_image_generations --limit 1
+```
+
+New batches use prompt policy `v2-controlled-variety`. Owner-directed regeneration is available only
+through the guarded API/admin dialog: Hero requeues the full dependent set, while Alternate and Detail
+requeue only their own draft. Explicit regeneration deletes the affected draft objects, records the
+normalized structured controls, increments the revision, and derives a new seed. Automatic worker
+retries reuse the already stored prompt and seed.
+
+Publishing an approved set requires an explicit `append` or `replace` choice. Append keeps the
+locked product gallery and adds Hero, Alternate, and Detail at the end. Replace uses only the three
+generated images. Both modes capture the exact locked gallery immediately before publication for
+rollback, and neither mode deletes superseded storage objects automatically.
+
 ## Database backup and restore
 
 `backup-postgres.sh` creates a PostgreSQL custom-format dump in `/opt/ladyshelf/backups` and deletes local dumps older than 14 days. A local dump does not protect against VM or disk loss; copy each completed dump to separately managed off-server storage before launch.

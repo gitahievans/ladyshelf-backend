@@ -1,8 +1,16 @@
+import re
+import unicodedata
+
 from django.utils.text import slugify
 from rest_framework import serializers
 
 from admin_portal.access import build_permission_set
-from admin_portal.models import AdminStaffAccess
+from admin_portal.models import (
+    AdminStaffAccess,
+    ImageGenerationBatch,
+    ProductImageCandidate,
+    ProductImageGeneration,
+)
 from customers.serializers import AddressSerializer
 from customers.models import CustomerProfile
 from catalog.models import Category, Product, ProductVariant
@@ -376,6 +384,7 @@ class AdminProductWriteSerializer(serializers.ModelSerializer):
     )
     isFeatured = serializers.BooleanField(source="is_featured", required=False)
     isNewArrival = serializers.BooleanField(source="is_new_arrival", required=False)
+    isPublished = serializers.BooleanField(source="is_published", required=False)
     careInstructions = serializers.CharField(
         source="care_instructions",
         allow_blank=True,
@@ -402,10 +411,24 @@ class AdminProductWriteSerializer(serializers.ModelSerializer):
             "review_count",
             "isFeatured",
             "isNewArrival",
+            "isPublished",
             "material",
             "careInstructions",
             "created_at",
         )
+
+    def validate(self, attrs):
+        instance_images = self.instance.images if self.instance else []
+        images = attrs.get("images", instance_images)
+        is_published = attrs.get(
+            "is_published",
+            self.instance.is_published if self.instance else False,
+        )
+        if is_published and not images:
+            raise serializers.ValidationError(
+                {"isPublished": "Add at least one product image before publishing."}
+            )
+        return attrs
 
     def create(self, validated_data):
         external_id = (validated_data.get("external_id") or "").strip()
@@ -464,6 +487,288 @@ class AdminVariantWriteSerializer(serializers.ModelSerializer):
             )
 
         return super().create(validated_data)
+
+
+class ImageGenerationBatchCreateSerializer(serializers.Serializer):
+    productIds = serializers.ListField(
+        child=serializers.IntegerField(min_value=1),
+        min_length=1,
+        max_length=5,
+        allow_empty=False,
+    )
+
+    def validate_productIds(self, value):
+        if len(set(value)) != len(value):
+            raise serializers.ValidationError("Select each product only once.")
+        return value
+
+
+class ImageGenerationPublishSerializer(serializers.Serializer):
+    publicationMode = serializers.ChoiceField(
+        choices=ProductImageGeneration.PublicationMode.values,
+    )
+
+
+BODY_PROFILE_CHOICES = ("automatic", "slim", "curvy", "athletic")
+SKIN_TONE_CHOICES = ("automatic", "light_brown", "medium_brown", "deep_brown")
+COMPOSITION_CHOICES = ("automatic", "standing", "seated", "walking", "three_quarter")
+DETAIL_FOCUS_CHOICES = ("automatic", "fabric", "pattern", "stitching", "closure", "construction")
+KNOWN_COLOR_WORDS = {
+    "black", "blue", "brown", "cream", "gold", "gray", "green", "grey", "ivory",
+    "maroon", "navy", "orange", "pink", "purple", "red", "silver", "tan", "teal",
+    "white", "yellow",
+}
+PROHIBITED_NOTE_PATTERNS = (
+    (r"\b(?:man|men|male|males|boy|boys|child|children|kid|kids|teen(?:ager)?s?|girl|girls|minor|non[- ]adult)\b", "Models must be adult Black women."),
+    (r"\b(?:(?:white|asian|caucasian|non[- ]?black)\s+(?:model|woman|person)|not\s+black)\b", "Models must be Black women."),
+    (r"\b(?:nude|nudity|naked|explicit|sexual|fetish)\b", "Unsafe or sexualized direction is not allowed."),
+    (
+        r"\b(?:add|remove|replace|redesign|change|alter)\b.{0,40}\b(?:sleeve|collar|neckline|hem|closure|zipper|button|print|pattern|fabric|material|design)\b",
+        "Instructions cannot change the product design.",
+    ),
+    (r"\b(?:sleeveless|backless)\b", "Instructions cannot change the product design."),
+)
+
+
+def normalize_regeneration_instruction(value: str) -> str:
+    if any(unicodedata.category(character) == "Cc" for character in value):
+        raise serializers.ValidationError("Control characters are not allowed.")
+    normalized = " ".join(value.split())
+    lowered = normalized.lower()
+    for pattern, message in PROHIBITED_NOTE_PATTERNS:
+        if re.search(pattern, lowered):
+            raise serializers.ValidationError(message)
+    return normalized
+
+
+class ModelShotRegenerationSerializer(serializers.Serializer):
+    color = serializers.CharField(required=False, allow_null=True, allow_blank=False, max_length=120)
+    bodyProfile = serializers.ChoiceField(choices=BODY_PROFILE_CHOICES, default="automatic")
+    skinTone = serializers.ChoiceField(choices=SKIN_TONE_CHOICES, default="automatic")
+    composition = serializers.ChoiceField(choices=COMPOSITION_CHOICES, default="automatic")
+    instruction = serializers.CharField(required=False, allow_blank=True, max_length=500, default="", trim_whitespace=False)
+
+    def validate_instruction(self, value):
+        return normalize_regeneration_instruction(value)
+
+
+class DetailShotRegenerationSerializer(serializers.Serializer):
+    color = serializers.CharField(required=False, allow_null=True, allow_blank=False, max_length=120)
+    detailFocus = serializers.ChoiceField(choices=DETAIL_FOCUS_CHOICES, default="automatic")
+    instruction = serializers.CharField(required=False, allow_blank=True, max_length=500, default="", trim_whitespace=False)
+
+    def validate_instruction(self, value):
+        return normalize_regeneration_instruction(value)
+
+
+class CandidateRegenerationSerializer(serializers.Serializer):
+    scope = serializers.ChoiceField(choices=("shot", "set"))
+    shots = serializers.DictField(allow_empty=False)
+
+    def validate(self, attrs):
+        candidate = self.context["candidate"]
+        scope = attrs["scope"]
+        raw_shots = attrs["shots"]
+        if candidate.shot_type == ProductImageCandidate.ShotType.HERO and scope != "set":
+            raise serializers.ValidationError({"scope": "Hero regeneration requires full-set scope."})
+        if candidate.shot_type != ProductImageCandidate.ShotType.HERO and scope != "shot":
+            raise serializers.ValidationError({"scope": "Alternate and Detail regeneration require shot scope."})
+
+        expected_shots = (
+            {choice for choice, _label in ProductImageCandidate.ShotType.choices}
+            if scope == "set"
+            else {candidate.shot_type}
+        )
+        received_shots = set(raw_shots)
+        if received_shots != expected_shots:
+            missing = sorted(expected_shots - received_shots)
+            unexpected = sorted(received_shots - expected_shots)
+            errors = []
+            if missing:
+                errors.append(f"Missing shot settings: {', '.join(missing)}.")
+            if unexpected:
+                errors.append(f"Unexpected shot settings: {', '.join(unexpected)}.")
+            raise serializers.ValidationError({"shots": errors})
+
+        catalog_colors = [str(color) for color in candidate.generation.source_snapshot.get("colors", [])]
+        colors_by_key = {color.casefold(): color for color in catalog_colors}
+        normalized_shots = {}
+        shot_errors = {}
+        for shot_type in expected_shots:
+            shot_serializer_class = (
+                DetailShotRegenerationSerializer
+                if shot_type == ProductImageCandidate.ShotType.DETAIL
+                else ModelShotRegenerationSerializer
+            )
+            shot_serializer = shot_serializer_class(data=raw_shots[shot_type])
+            if not shot_serializer.is_valid():
+                shot_errors[shot_type] = shot_serializer.errors
+                continue
+            shot_data = dict(shot_serializer.validated_data)
+            selected_color = shot_data.get("color")
+            if selected_color is not None:
+                canonical_color = colors_by_key.get(selected_color.strip().casefold())
+                if canonical_color is None:
+                    shot_errors.setdefault(shot_type, {})["color"] = [
+                        "Select a color from the frozen catalog snapshot."
+                    ]
+                else:
+                    shot_data["color"] = canonical_color
+            instruction = shot_data.get("instruction", "")
+            color_match = re.search(
+                r"\b(?:use|make|paint|recolor|colour|color|in)\s+(?:the\s+product\s+)?(?:to\s+)?(" + "|".join(sorted(KNOWN_COLOR_WORDS)) + r")\b",
+                instruction.lower(),
+            )
+            if color_match and color_match.group(1).casefold() not in colors_by_key:
+                shot_errors.setdefault(shot_type, {})["instruction"] = [
+                    "Instructions cannot request a color outside the frozen catalog snapshot."
+                ]
+            normalized_shots[shot_type] = shot_data
+        if shot_errors:
+            raise serializers.ValidationError({"shots": shot_errors})
+
+        if len(catalog_colors) >= 3:
+            explicit_colors = [
+                values["color"] for values in normalized_shots.values() if values.get("color")
+            ]
+            unchanged_colors = [
+                other.manual_overrides.get("resolved", {}).get("color")
+                for other in candidate.generation.candidates.all()
+                if other.shot_type not in expected_shots
+            ]
+            all_selected = explicit_colors + [color for color in unchanged_colors if color]
+            if len(all_selected) != len(set(all_selected)):
+                raise serializers.ValidationError(
+                    {"shots": "Choose different explicit colors while three or more catalog colors are available."}
+                )
+
+        attrs["shots"] = normalized_shots
+        return attrs
+
+
+class ProductImageCandidateSerializer(serializers.ModelSerializer):
+    id = serializers.CharField(source="pk")
+    shotType = serializers.CharField(source="shot_type")
+    publicUrl = serializers.SerializerMethodField()
+    mimeType = serializers.CharField(source="mime_type")
+    attemptCount = serializers.IntegerField(source="attempt_count")
+    errorCode = serializers.CharField(source="last_error_code")
+    errorMessage = serializers.CharField(source="last_error_message")
+    reviewedAt = serializers.DateTimeField(source="reviewed_at", allow_null=True)
+    promptPolicyVersion = serializers.CharField(source="prompt_policy_version")
+    regenerationRevision = serializers.IntegerField(source="regeneration_revision")
+    manualOverrides = serializers.JSONField(source="manual_overrides")
+
+    class Meta:
+        model = ProductImageCandidate
+        fields = (
+            "id",
+            "shotType",
+            "status",
+            "prompt",
+            "promptPolicyVersion",
+            "regenerationRevision",
+            "manualOverrides",
+            "publicUrl",
+            "mimeType",
+            "width",
+            "height",
+            "attemptCount",
+            "errorCode",
+            "errorMessage",
+            "reviewedAt",
+        )
+
+    def get_publicUrl(self, obj: ProductImageCandidate) -> str:
+        if obj.status in {
+            ProductImageCandidate.Status.READY,
+            ProductImageCandidate.Status.APPROVED,
+        }:
+            separator = "&" if "?" in obj.public_url else "?"
+            return f"{obj.public_url}{separator}v={obj.regeneration_revision}"
+        return ""
+
+
+class ProductImageGenerationSerializer(serializers.ModelSerializer):
+    id = serializers.CharField(source="pk")
+    productId = serializers.CharField(source="product.pk")
+    productName = serializers.CharField(source="product.name")
+    productSlug = serializers.CharField(source="product.slug")
+    attemptCount = serializers.IntegerField(source="attempt_count")
+    nextAttemptAt = serializers.DateTimeField(source="next_attempt_at", allow_null=True)
+    errorCode = serializers.CharField(source="last_error_code")
+    errorMessage = serializers.CharField(source="last_error_message")
+    previousImages = serializers.JSONField(source="previous_images")
+    publicationMode = serializers.CharField(source="publication_mode", allow_null=True)
+    currentGalleryCount = serializers.SerializerMethodField()
+    canPublish = serializers.SerializerMethodField()
+    canRestore = serializers.SerializerMethodField()
+    candidates = ProductImageCandidateSerializer(many=True)
+    catalogColors = serializers.SerializerMethodField()
+
+    class Meta:
+        model = ProductImageGeneration
+        fields = (
+            "id",
+            "productId",
+            "productName",
+            "productSlug",
+            "status",
+            "model",
+            "attemptCount",
+            "nextAttemptAt",
+            "errorCode",
+            "errorMessage",
+            "previousImages",
+            "publicationMode",
+            "currentGalleryCount",
+            "catalogColors",
+            "canPublish",
+            "canRestore",
+            "candidates",
+            "created_at",
+            "updated_at",
+            "published_at",
+        )
+
+    def get_canPublish(self, obj: ProductImageGeneration) -> bool:
+        candidates = list(obj.candidates.all())
+        return len(candidates) == 3 and all(
+            candidate.status == ProductImageCandidate.Status.APPROVED
+            for candidate in candidates
+        )
+
+    def get_canRestore(self, obj: ProductImageGeneration) -> bool:
+        return obj.status == ProductImageGeneration.Status.PUBLISHED
+
+    def get_currentGalleryCount(self, obj: ProductImageGeneration) -> int:
+        return len(obj.product.images)
+
+    def get_catalogColors(self, obj: ProductImageGeneration) -> list[str]:
+        return list(obj.source_snapshot.get("colors", []))
+
+
+class ImageGenerationBatchSerializer(serializers.ModelSerializer):
+    id = serializers.CharField(source="pk")
+    productCount = serializers.IntegerField(source="product_count")
+    createdAt = serializers.DateTimeField(source="created_at")
+    updatedAt = serializers.DateTimeField(source="updated_at")
+    completedAt = serializers.DateTimeField(source="completed_at", allow_null=True)
+    generations = ProductImageGenerationSerializer(many=True)
+
+    class Meta:
+        model = ImageGenerationBatch
+        fields = (
+            "id",
+            "status",
+            "provider",
+            "model",
+            "productCount",
+            "generations",
+            "createdAt",
+            "updatedAt",
+            "completedAt",
+        )
 
 
 class AdminInventoryRowSerializer(serializers.ModelSerializer):

@@ -71,6 +71,28 @@ The custom dashboard and Django admin intentionally coexist. Do not treat the cu
 
 Run this on a schedule before launch. The command cancels expired unpaid prepay orders and restores stock.
 
+### AI product-image queue
+
+- Inspect queued/reviewable work through `/api/v1/admin/image-generations/batches`.
+- Process one product set manually with `python manage.py process_product_image_generations --limit 1`.
+- The optional `ladyshelf-product-images.timer` runs that command every two minutes; do not enable it
+  until credentials, quota expectations, and production activation are separately approved.
+- Quota failures remain queued until the next 00:00 UTC reset. Transient failures use bounded retries.
+- Configuration failures stop retrying and expose only a safe owner-facing message.
+- Rejected candidates are never publishable. Owner regeneration uses structured controls and guarded
+  notes rather than raw prompts. Regenerating Hero queues Hero, Alternate, and Detail because the latter
+  two depend on its reference; regenerating Alternate or Detail affects only that slot.
+- New sets use different frozen catalog colors whenever three or more exist, distinct adult Black-woman
+  profiles for Hero and Alternate, and a person-free Detail prompt. Never select or request a color that
+  is absent from the generation's frozen catalog snapshot.
+- Explicit regeneration increments the candidate revision and seed. Worker retries must preserve the
+  stored prompt and seed so transient failures remain reproducible.
+- Draft object paths and admin preview URLs include the regeneration revision. Treat draft URLs as
+  immutable so Supabase, Next.js, and browser caches cannot display a previous revision after the
+  candidate status has returned to ready.
+- Publish copies all three approved objects to final paths before atomically replacing the gallery.
+  Use `Restore previous gallery` in the admin review UI for rollback.
+
 ## Webhook setup
 
 - SasaPay callback endpoint:

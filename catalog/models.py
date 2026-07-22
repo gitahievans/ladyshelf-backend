@@ -57,6 +57,7 @@ class Product(models.Model):
     review_count = models.PositiveIntegerField(default=0)
     is_featured = models.BooleanField(default=False)
     is_new_arrival = models.BooleanField(default=False)
+    is_published = models.BooleanField(default=False, db_index=True)
     material = models.TextField(blank=True)
     care_instructions = models.TextField(blank=True)
     created_at = models.DateTimeField()

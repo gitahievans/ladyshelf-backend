@@ -1,6 +1,6 @@
 # Deployment handoff
 
-Last updated: 2026-07-18 (Africa/Nairobi)
+Last updated: 2026-07-22 (Africa/Nairobi)
 
 ## Resume point
 
@@ -133,6 +133,26 @@ Operational runbook: [`docs/harbor.md`](harbor.md).
 - Continue to inspect `git status` and targeted diffs before future edits; do not absorb new unrelated changes into deployment commits.
 
 ## Pending plan
+
+### AI product-image feature branch (not deployed)
+
+- The `feature/ai-product-images` implementation adds unpublished product drafts, owner-reviewed
+  Cloudflare Workers AI candidates, Supabase draft/final paths, and a two-minute worker timer artifact.
+- No production credentials were configured, no provider calls were made, no production migration
+  was applied, and `ladyshelf-product-images.timer` remains absent/disabled in production.
+- A future approved release must back up PostgreSQL, configure protected backend variables, apply
+  migrations, deploy both feature branches, and validate one noncritical draft before timer activation.
+- The local feature branch now includes the additive controlled-variety/manual-regeneration extension:
+  candidate prompt-policy/revision/override audit fields, v2 prompt allocation, server-side guarded
+  controls, and scoped regeneration. This extension has not been migrated, deployed, or exercised
+  against real Cloudflare or Supabase services.
+- The local feature branch also includes the mixed-gallery publication extension. Publication now
+  requires an audited `append` or `replace` mode, snapshots the locked product gallery immediately
+  before publication, preserves variant image assignments in append mode, clears only removed URL
+  assignments in replace mode, and supports exact empty or populated gallery rollback. Historical
+  published generations are backfilled as `replace`; unpublished generations remain without a mode
+  until publication. This migration has been tested only in the local PostgreSQL test database and
+  has not been applied to the local development database or production.
 
 ### 1. Post-deployment operations
 

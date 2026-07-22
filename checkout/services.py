@@ -153,7 +153,9 @@ def build_validated_cart_items(
     lock_variants: bool = False,
 ) -> tuple[list[dict], int]:
     variant_ids = [line["variantId"] for line in cart_lines]
-    queryset = ProductVariant.objects.select_related("product", "product__category")
+    queryset = ProductVariant.objects.filter(
+        product__is_published=True
+    ).select_related("product", "product__category")
     if lock_variants:
         queryset = queryset.select_for_update()
 

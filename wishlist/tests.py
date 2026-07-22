@@ -45,3 +45,19 @@ class WishlistApiTests(TestCase):
         self.assertEqual(remove_response.status_code, 204)
         self.assertEqual(clear_response.status_code, 204)
         self.assertEqual(WishlistItem.objects.count(), 0)
+
+    def test_unpublished_products_cannot_be_added_or_listed(self):
+        WishlistItem.objects.create(customer=self.customer, product=self.product)
+        self.product.is_published = False
+        self.product.save(update_fields=["is_published", "updated_at"])
+        self.client.force_authenticate(user=self.customer)
+
+        create_response = self.client.post(
+            "/api/v1/wishlist/",
+            {"productId": self.product.external_id},
+            format="json",
+        )
+        list_response = self.client.get("/api/v1/wishlist/")
+
+        self.assertEqual(create_response.status_code, 404)
+        self.assertEqual(list_response.json()["productIds"], [])

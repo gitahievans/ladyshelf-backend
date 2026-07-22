@@ -25,8 +25,9 @@ class ProductAdmin(admin.ModelAdmin):
         "badge",
         "is_featured",
         "is_new_arrival",
+        "is_published",
     )
-    list_filter = ("category", "badge", "is_featured", "is_new_arrival")
+    list_filter = ("category", "badge", "is_featured", "is_new_arrival", "is_published")
     search_fields = ("name", "slug", "external_id", "description")
     inlines = [ProductVariantInline]
 

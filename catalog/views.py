@@ -12,7 +12,9 @@ class CategoryListView(generics.ListAPIView):
     throttle_scope = "catalog"
 
     def get_queryset(self):
-        return Category.objects.annotate(product_count=Count("products")).order_by("name")
+        return Category.objects.annotate(
+            product_count=Count("products", filter=Q(products__is_published=True))
+        ).order_by("name")
 
 
 class ProductListView(generics.ListAPIView):
@@ -25,7 +27,7 @@ class ProductListView(generics.ListAPIView):
         queryset = (
             Product.objects.select_related("category")
             .prefetch_related("variants")
-            .all()
+            .filter(is_published=True)
         )
         category_slug = self.request.query_params.get("category")
         query = self.request.query_params.get("q")
@@ -87,4 +89,4 @@ class ProductDetailView(generics.RetrieveAPIView):
     throttle_scope = "catalog"
 
     def get_queryset(self):
-        return Product.objects.select_related("category").prefetch_related("variants")
+        return Product.objects.filter(is_published=True).select_related("category").prefetch_related("variants")
