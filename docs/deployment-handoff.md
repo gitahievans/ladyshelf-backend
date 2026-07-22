@@ -142,6 +142,10 @@ Operational runbook: [`docs/harbor.md`](harbor.md).
   was applied, and `ladyshelf-product-images.timer` remains absent/disabled in production.
 - A future approved release must back up PostgreSQL, configure protected backend variables, apply
   migrations, deploy both feature branches, and validate one noncritical draft before timer activation.
+- The local feature branch now includes the additive controlled-variety/manual-regeneration extension:
+  candidate prompt-policy/revision/override audit fields, v2 prompt allocation, server-side guarded
+  controls, and scoped regeneration. This extension has not been migrated, deployed, or exercised
+  against real Cloudflare or Supabase services.
 
 ### 1. Post-deployment operations
 

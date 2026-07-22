@@ -14,7 +14,13 @@ from admin_portal.image_generation.cloudflare import (
     generate_image,
     prepare_candidate_image,
 )
-from admin_portal.image_generation.prompts import build_prompt, representation_profile
+from admin_portal.image_generation.prompts import (
+    PROMPT_POLICY_V2,
+    allocate_colors,
+    build_prompt,
+    representation_profile,
+    resolve_shot_overrides,
+)
 from admin_portal.image_generation.services import (
     ImageGenerationWorkflowError,
     approve_candidate,
@@ -45,6 +51,38 @@ def image_bytes(size=(768, 1024), image_format="PNG") -> bytes:
     output = io.BytesIO()
     Image.new("RGB", size, color=(210, 190, 160)).save(output, format=image_format)
     return output.getvalue()
+
+
+def model_shot(**overrides) -> dict:
+    return {
+        "color": None,
+        "bodyProfile": "automatic",
+        "skinTone": "automatic",
+        "composition": "automatic",
+        "instruction": "",
+        **overrides,
+    }
+
+
+def detail_shot(**overrides) -> dict:
+    return {
+        "color": None,
+        "detailFocus": "automatic",
+        "instruction": "",
+        **overrides,
+    }
+
+
+def set_regeneration_payload(**shots) -> dict:
+    return {
+        "scope": "set",
+        "shots": {
+            "hero": model_shot(),
+            "alternate": model_shot(),
+            "detail": detail_shot(),
+            **shots,
+        },
+    }
 
 
 class FakeStorage:
@@ -96,15 +134,62 @@ class PromptTests(TestCase):
         prompt = build_prompt(snapshot, ProductImageCandidate.ShotType.HERO)
 
         self.assertIn("adult Black woman", prompt)
-        self.assertIn("No white models, no men, no children", prompt)
-        self.assertIn(representation_profile("12"), prompt)
+        self.assertIn("Never show a white or non-Black model, a man, a child", prompt)
+        self.assertIn(representation_profile("12")["identity"], prompt)
+        self.assertIn(PROMPT_POLICY_V2, prompt)
         for omitted in ("9999", "SECRET-SKU", "Stock:", "Rating:", "Reviews:"):
             self.assertNotIn(omitted, prompt)
 
     def test_representation_profile_is_stable_and_varied(self):
         self.assertEqual(representation_profile("abc"), representation_profile("abc"))
-        profiles = {representation_profile(str(value)) for value in range(40)}
-        self.assertEqual(len(profiles), 4)
+        profiles = {
+            tuple(representation_profile(str(value)).items()) for value in range(80)
+        }
+        self.assertEqual(len(profiles), 8)
+
+    def test_hero_and_alternate_are_distinct_and_detail_is_person_free(self):
+        snapshot = {
+            "id": "42",
+            "name": "Dress",
+            "description": "A sculpted dress",
+            "category": "Dresses",
+            "material": "Cotton",
+            "tags": [],
+            "colors": ["Red", "Black", "Green"],
+        }
+        overrides = resolve_shot_overrides(snapshot, {
+            "hero": {}, "alternate": {}, "detail": {}
+        })
+        self.assertNotEqual(
+            overrides["hero"]["resolved"]["identity"],
+            overrides["alternate"]["resolved"]["identity"],
+        )
+        detail_prompt = build_prompt(snapshot, "detail", overrides["detail"])
+        self.assertIn("product-only image", detail_prompt)
+        self.assertIn("Show no person, face, hands, limbs", detail_prompt)
+
+    def test_color_allocation_for_three_two_one_and_zero_colors(self):
+        for colors, expected_unique in [
+            (["Red", "Black", "Green"], 3),
+            (["Red", "Black"], 2),
+            (["Red"], 1),
+            ([], 1),
+        ]:
+            with self.subTest(colors=colors):
+                assignments = allocate_colors(
+                    {"id": "stable", "colors": colors},
+                    {shot: None for shot in ("hero", "alternate", "detail")},
+                )
+                self.assertEqual(len(set(assignments.values())), expected_unique)
+                self.assertTrue(set(assignments.values()) <= (set(colors) or {None}))
+
+    def test_mixed_explicit_and_automatic_colors_use_remaining_catalog_colors(self):
+        assignments = allocate_colors(
+            {"id": "stable", "colors": ["Red", "Black", "Green"]},
+            {"hero": "Red", "alternate": None, "detail": None},
+        )
+        self.assertEqual(assignments["hero"], "Red")
+        self.assertEqual(set(assignments.values()), {"Red", "Black", "Green"})
 
 
 @override_settings(
@@ -292,13 +377,19 @@ class GenerationWorkflowTests(TestCase):
         variant.save(update_fields=["image_url", "updated_at"])
         self.generate_ready(generation)
         candidates = list(generation.candidates.all())
+        detail = generation.candidates.get(shot_type="detail")
 
-        reject_candidate(candidate_id=candidates[2].pk, reviewer=self.owner, storage=self.storage)
-        candidates[2].refresh_from_db()
-        self.assertEqual(candidates[2].status, ProductImageCandidate.Status.REJECTED)
-        regenerate_candidate(candidate_id=candidates[2].pk, storage=self.storage)
-        candidates[2].refresh_from_db()
-        self.assertEqual(candidates[2].status, ProductImageCandidate.Status.QUEUED)
+        reject_candidate(candidate_id=detail.pk, reviewer=self.owner, storage=self.storage)
+        detail.refresh_from_db()
+        self.assertEqual(detail.status, ProductImageCandidate.Status.REJECTED)
+        regenerate_candidate(
+            candidate_id=detail.pk,
+            scope="shot",
+            shots={"detail": detail_shot()},
+            storage=self.storage,
+        )
+        detail.refresh_from_db()
+        self.assertEqual(detail.status, ProductImageCandidate.Status.QUEUED)
         with patch("admin_portal.image_generation.services.generate_image", return_value=image_bytes()):
             process_next_generation(storage=self.storage)
 
@@ -315,6 +406,17 @@ class GenerationWorkflowTests(TestCase):
         self.assertEqual(len(product.images), 3)
         self.assertEqual(variant.image_url, "")
         self.assertEqual(product.images[0].split("/")[-1], "hero.webp")
+
+        published_images = list(product.images)
+        with self.assertRaises(ImageGenerationWorkflowError):
+            regenerate_candidate(
+                candidate_id=detail.pk,
+                scope="shot",
+                shots={"detail": detail_shot()},
+                storage=self.storage,
+            )
+        product.refresh_from_db()
+        self.assertEqual(product.images, published_images)
 
         publish_generation(generation_id=generation.pk, storage=self.storage)
         product.refresh_from_db()
@@ -345,9 +447,150 @@ class GenerationWorkflowTests(TestCase):
         generation = batch.generations.get()
         self.generate_ready(generation)
         hero = generation.candidates.get(shot_type=ProductImageCandidate.ShotType.HERO)
-        regenerate_candidate(candidate_id=hero.pk, storage=self.storage)
+        regenerate_candidate(
+            candidate_id=hero.pk,
+            scope="set",
+            shots=set_regeneration_payload()["shots"],
+            storage=self.storage,
+        )
         self.assertFalse(
             generation.candidates.exclude(status=ProductImageCandidate.Status.QUEUED).exists()
+        )
+
+    def test_new_batches_store_v2_policy_distinct_colors_and_audit_assignments(self):
+        product = self.products[0]
+        variants = list(product.variants.all()[:3])
+        if len(variants) < 3:
+            self.skipTest("Seed catalog needs three variants for this allocation test.")
+        for variant, color in zip(variants, ("Red", "Black", "Green"), strict=True):
+            variant.color = color
+            variant.save(update_fields=["color", "updated_at"])
+        batch = create_batch(product_ids=[product.pk], requested_by=self.owner)
+        candidates = list(batch.generations.get().candidates.all())
+        self.assertTrue(all(item.prompt_policy_version == PROMPT_POLICY_V2 for item in candidates))
+        self.assertTrue(all(item.regeneration_revision == 0 for item in candidates))
+        self.assertEqual(
+            len({item.manual_overrides["resolved"]["color"] for item in candidates}),
+            3,
+        )
+
+    def test_explicit_regeneration_changes_seed_and_revision_but_retry_does_not(self):
+        generation = self.make_batch().generations.get()
+        self.generate_ready(generation)
+        alternate = generation.candidates.get(shot_type="alternate")
+        original_seed = alternate.seed
+        original_prompt = alternate.prompt
+        regenerate_candidate(
+            candidate_id=alternate.pk,
+            scope="shot",
+            shots={"alternate": model_shot(composition="walking")},
+            storage=self.storage,
+        )
+        alternate.refresh_from_db()
+        self.assertEqual(alternate.regeneration_revision, 1)
+        self.assertNotEqual(alternate.seed, original_seed)
+        self.assertNotEqual(alternate.prompt, original_prompt)
+        retry_seed = alternate.seed
+        retry_prompt = alternate.prompt
+        with patch(
+            "admin_portal.image_generation.services.generate_image",
+            side_effect=ImageProviderError("provider_unavailable", "Temporary.", retryable=True),
+        ):
+            process_next_generation(storage=self.storage)
+        alternate.refresh_from_db()
+        self.assertEqual(alternate.seed, retry_seed)
+        self.assertEqual(alternate.prompt, retry_prompt)
+        self.assertEqual(alternate.regeneration_revision, 1)
+
+    def test_isolated_regeneration_leaves_other_candidates_unchanged(self):
+        generation = self.make_batch().generations.get()
+        self.generate_ready(generation)
+        before = {
+            item.shot_type: (item.status, item.seed, item.public_url)
+            for item in generation.candidates.all()
+        }
+        detail = generation.candidates.get(shot_type="detail")
+        regenerate_candidate(
+            candidate_id=detail.pk,
+            scope="shot",
+            shots={"detail": detail_shot(detailFocus="stitching")},
+            storage=self.storage,
+        )
+        after = {item.shot_type: item for item in generation.candidates.all()}
+        for shot_type in ("hero", "alternate"):
+            self.assertEqual(
+                (after[shot_type].status, after[shot_type].seed, after[shot_type].public_url),
+                before[shot_type],
+            )
+        self.assertEqual(after["detail"].status, ProductImageCandidate.Status.QUEUED)
+
+    def test_regeneration_api_validates_scope_colors_enums_and_notes(self):
+        product = self.products[0]
+        variants = list(product.variants.all()[:3])
+        if len(variants) < 3:
+            self.skipTest("Seed catalog needs three variants for this validation test.")
+        for variant, color in zip(variants, ("Red", "Black", "Green"), strict=True):
+            variant.color = color
+            variant.save(update_fields=["color", "updated_at"])
+        generation = create_batch(product_ids=[product.pk], requested_by=self.owner).generations.get()
+        self.generate_ready(generation)
+        hero = generation.candidates.get(shot_type="hero")
+        self.client.force_authenticate(user=self.owner)
+
+        invalid_payloads = [
+            {"scope": "shot", "shots": {"hero": model_shot()}},
+            set_regeneration_payload(hero=model_shot(color="Blue")),
+            set_regeneration_payload(hero=model_shot(bodyProfile="unsupported")),
+            set_regeneration_payload(hero=model_shot(instruction="Use a male model")),
+            set_regeneration_payload(hero=model_shot(instruction="Add a new sleeve design")),
+            set_regeneration_payload(hero=model_shot(instruction="Make the product blue")),
+            set_regeneration_payload(hero=model_shot(instruction="line one\nline two")),
+            set_regeneration_payload(hero=model_shot(instruction="x" * 501)),
+            set_regeneration_payload(
+                hero=model_shot(color="Red"),
+                alternate=model_shot(color="Red"),
+            ),
+        ]
+        for payload in invalid_payloads:
+            with self.subTest(payload=payload):
+                response = self.client.post(
+                    f"/api/v1/admin/image-generations/candidates/{hero.pk}/regenerate",
+                    payload,
+                    format="json",
+                )
+                self.assertEqual(response.status_code, 400)
+
+    def test_regeneration_api_is_owner_only_and_normalizes_manual_direction(self):
+        generation = self.make_batch().generations.get()
+        self.generate_ready(generation)
+        detail = generation.candidates.get(shot_type="detail")
+        payload = {
+            "scope": "shot",
+            "shots": {"detail": detail_shot(instruction="Emphasize   the   seam finish")},
+        }
+        self.client.force_authenticate(user=self.attendant)
+        denied = self.client.post(
+            f"/api/v1/admin/image-generations/candidates/{detail.pk}/regenerate",
+            payload,
+            format="json",
+        )
+        self.assertEqual(denied.status_code, 403)
+
+        self.client.force_authenticate(user=self.owner)
+        with patch(
+            "admin_portal.image_generation.services.SupabaseImageStorage",
+            return_value=self.storage,
+        ):
+            response = self.client.post(
+                f"/api/v1/admin/image-generations/candidates/{detail.pk}/regenerate",
+                payload,
+                format="json",
+            )
+        self.assertEqual(response.status_code, 200)
+        detail.refresh_from_db()
+        self.assertEqual(
+            detail.manual_overrides["requested"]["instruction"],
+            "Emphasize the seam finish",
         )
 
     def test_deleting_product_cancels_queued_generation_and_batch(self):

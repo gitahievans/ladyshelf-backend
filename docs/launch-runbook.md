@@ -79,8 +79,14 @@ Run this on a schedule before launch. The command cancels expired unpaid prepay 
   until credentials, quota expectations, and production activation are separately approved.
 - Quota failures remain queued until the next 00:00 UTC reset. Transient failures use bounded retries.
 - Configuration failures stop retrying and expose only a safe owner-facing message.
-- Rejected candidates are never publishable. Regenerate only the rejected/failed slot; regenerating
-  hero also queues alternate and detail because they depend on its reference.
+- Rejected candidates are never publishable. Owner regeneration uses structured controls and guarded
+  notes rather than raw prompts. Regenerating Hero queues Hero, Alternate, and Detail because the latter
+  two depend on its reference; regenerating Alternate or Detail affects only that slot.
+- New sets use different frozen catalog colors whenever three or more exist, distinct adult Black-woman
+  profiles for Hero and Alternate, and a person-free Detail prompt. Never select or request a color that
+  is absent from the generation's frozen catalog snapshot.
+- Explicit regeneration increments the candidate revision and seed. Worker retries must preserve the
+  stored prompt and seed so transient failures remain reproducible.
 - Publish copies all three approved objects to final paths before atomically replacing the gallery.
   Use `Restore previous gallery` in the admin review UI for rollback.
 

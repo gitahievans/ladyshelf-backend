@@ -21,6 +21,10 @@ class ProductImageCandidateInline(admin.TabularInline):
     readonly_fields = (
         "shot_type",
         "status",
+        "prompt_policy_version",
+        "regeneration_revision",
+        "manual_overrides",
+        "prompt",
         "seed",
         "storage_path",
         "public_url",

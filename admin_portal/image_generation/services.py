@@ -11,7 +11,12 @@ from admin_portal.image_generation.cloudflare import (
     generate_image,
     prepare_candidate_image,
 )
-from admin_portal.image_generation.prompts import build_prompt, deterministic_seed
+from admin_portal.image_generation.prompts import (
+    PROMPT_POLICY_V2,
+    build_prompt,
+    deterministic_seed,
+    resolve_shot_overrides,
+)
 from admin_portal.image_generation.storage import (
     ImageStorageError,
     SupabaseImageStorage,
@@ -96,6 +101,10 @@ def create_batch(*, product_ids: list[int], requested_by) -> ImageGenerationBatc
     for product_id in product_ids:
         product = products_by_id[product_id]
         snapshot = product_snapshot(product)
+        overrides_by_shot = resolve_shot_overrides(
+            snapshot,
+            {shot_type: {} for shot_type in SHOT_ORDER},
+        )
         generation = ProductImageGeneration.objects.create(
             batch=batch,
             product=product,
@@ -107,8 +116,15 @@ def create_batch(*, product_ids: list[int], requested_by) -> ImageGenerationBatc
             ProductImageCandidate.objects.create(
                 generation=generation,
                 shot_type=shot_type,
-                prompt=build_prompt(snapshot, shot_type),
-                seed=deterministic_seed(str(product.pk), shot_type),
+                prompt=build_prompt(
+                    snapshot,
+                    shot_type,
+                    overrides_by_shot[shot_type],
+                    policy_version=PROMPT_POLICY_V2,
+                ),
+                prompt_policy_version=PROMPT_POLICY_V2,
+                manual_overrides=overrides_by_shot[shot_type],
+                seed=deterministic_seed(str(product.pk), shot_type, 0),
             )
     return batch
 
@@ -359,7 +375,6 @@ def approve_candidate(*, candidate_id: object, reviewer) -> ProductImageCandidat
 def reject_candidate(
     *, candidate_id: object, reviewer, storage: SupabaseImageStorage | None = None
 ) -> ProductImageCandidate:
-    storage = storage or SupabaseImageStorage()
     candidate = ProductImageCandidate.objects.select_related("generation").get(pk=candidate_id)
     if candidate.status == ProductImageCandidate.Status.REJECTED:
         return candidate
@@ -391,13 +406,49 @@ def reject_candidate(
 
 
 def regenerate_candidate(
-    *, candidate_id: object, storage: SupabaseImageStorage | None = None
+    *,
+    candidate_id: object,
+    scope: str,
+    shots: dict[str, dict],
+    storage: SupabaseImageStorage | None = None,
 ) -> ProductImageCandidate:
-    storage = storage or SupabaseImageStorage()
     candidate = ProductImageCandidate.objects.select_related("generation").get(pk=candidate_id)
+    if candidate.generation.status in {
+        ProductImageGeneration.Status.PUBLISHED,
+        ProductImageGeneration.Status.CANCELLED,
+    }:
+        raise ImageGenerationWorkflowError(
+            "invalid_candidate_state",
+            "Published or cancelled image work cannot be regenerated.",
+        )
+    if candidate.status in {
+        ProductImageCandidate.Status.QUEUED,
+        ProductImageCandidate.Status.GENERATING,
+    }:
+        raise ImageGenerationWorkflowError(
+            "invalid_candidate_state",
+            "A queued or generating candidate cannot be regenerated again.",
+        )
+    storage = storage or SupabaseImageStorage()
     targets = [candidate]
-    if candidate.shot_type == ProductImageCandidate.ShotType.HERO:
+    if scope == "set":
         targets = list(candidate.generation.candidates.all())
+    target_shots = {target.shot_type for target in targets}
+    revisions = {
+        target.shot_type: target.regeneration_revision + 1 for target in targets
+    }
+    reserved_colors = {
+        other.shot_type: other.manual_overrides.get("resolved", {}).get("color")
+        for other in candidate.generation.candidates.all()
+        if other.shot_type not in target_shots
+        and other.manual_overrides.get("resolved", {}).get("color")
+    }
+    resolved_overrides = resolve_shot_overrides(
+        candidate.generation.source_snapshot,
+        shots,
+        revisions=revisions,
+        reserved_colors=reserved_colors,
+    )
     paths = [target.storage_path for target in targets if target.storage_path]
     if paths:
         storage.delete(paths)
@@ -408,6 +459,20 @@ def regenerate_candidate(
             )
         )
         for target in locked_targets:
+            target.regeneration_revision += 1
+            target.manual_overrides = resolved_overrides[target.shot_type]
+            target.prompt_policy_version = PROMPT_POLICY_V2
+            target.prompt = build_prompt(
+                candidate.generation.source_snapshot,
+                target.shot_type,
+                target.manual_overrides,
+                policy_version=PROMPT_POLICY_V2,
+            )
+            target.seed = deterministic_seed(
+                str(candidate.generation.product_id),
+                target.shot_type,
+                target.regeneration_revision,
+            )
             target.status = ProductImageCandidate.Status.QUEUED
             target.storage_path = ""
             target.public_url = ""

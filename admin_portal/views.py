@@ -38,6 +38,7 @@ from admin_portal.serializers import (
     AdminStaffUpdateSerializer,
     AdminStockUpdateSerializer,
     AdminVariantWriteSerializer,
+    CandidateRegenerationSerializer,
     ImageGenerationBatchCreateSerializer,
     ImageGenerationBatchSerializer,
     ProductImageCandidateSerializer,
@@ -772,8 +773,23 @@ class CandidateRegenerateView(APIView):
     throttle_scope = "admin"
 
     def post(self, request, candidate_id):
+        candidate = get_object_or_404(
+            ProductImageCandidate.objects.select_related("generation").prefetch_related(
+                "generation__candidates"
+            ),
+            pk=candidate_id,
+        )
+        serializer = CandidateRegenerationSerializer(
+            data=request.data,
+            context={"candidate": candidate},
+        )
+        serializer.is_valid(raise_exception=True)
         try:
-            candidate = regenerate_candidate(candidate_id=candidate_id)
+            candidate = regenerate_candidate(
+                candidate_id=candidate_id,
+                scope=serializer.validated_data["scope"],
+                shots=serializer.validated_data["shots"],
+            )
         except ImageGenerationWorkflowError as error:
             return workflow_error_response(error)
         except ImageStorageError as error:
