@@ -1,6 +1,7 @@
 import base64
 import binascii
 import io
+import re
 
 import requests
 from django.conf import settings
@@ -19,6 +20,38 @@ class ImageProviderError(Exception):
         self.code = code
         self.safe_message = safe_message
         self.retryable = retryable
+
+
+def _sanitize_provider_detail(value: object) -> str:
+    if not isinstance(value, str):
+        return ""
+    cleaned = re.sub(r"[\r\n\t]+", " ", value)
+    cleaned = re.sub(r"\s+", " ", cleaned).strip()
+    if not cleaned:
+        return ""
+    if re.search(r"(authorization|bearer|api[-_ ]?key|token|secret|password)", cleaned, re.IGNORECASE):
+        return "[redacted provider detail]"
+    cleaned = re.sub(r"https?://\S+", "[redacted url]", cleaned)
+    return cleaned[:180]
+
+
+def _provider_error_metadata(payload: object) -> str:
+    if not isinstance(payload, dict):
+        return ""
+    errors = payload.get("errors")
+    if not isinstance(errors, list) or not errors:
+        return ""
+    first_error = errors[0]
+    if not isinstance(first_error, dict):
+        return ""
+    parts = []
+    code = _sanitize_provider_detail(first_error.get("code"))
+    message = _sanitize_provider_detail(first_error.get("message"))
+    if code:
+        parts.append(f"code {code}")
+    if message:
+        parts.append(message)
+    return "; ".join(parts)
 
 
 def _classify_error(response: requests.Response) -> ImageProviderError:
@@ -41,7 +74,14 @@ def _classify_error(response: requests.Response) -> ImageProviderError:
     if "moderation" in error_text or "unsafe" in error_text or "safety" in error_text:
         return ImageProviderError("moderation", "Cloudflare rejected this candidate under its safety policy.")
     if status_code in {400, 404, 422}:
-        return ImageProviderError("provider_configuration", "The configured image model or request is invalid.")
+        metadata = _provider_error_metadata(payload)
+        detail = f" Cloudflare returned HTTP {status_code}"
+        if metadata:
+            detail = f"{detail}: {metadata}"
+        return ImageProviderError(
+            "provider_configuration",
+            f"The configured image model or request is invalid.{detail}",
+        )
     if status_code >= 500:
         return ImageProviderError("provider_unavailable", "Cloudflare image generation is temporarily unavailable.", retryable=True)
     return ImageProviderError("provider_error", "Cloudflare could not generate this image.")

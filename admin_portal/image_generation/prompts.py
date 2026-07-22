@@ -242,8 +242,10 @@ def build_prompt(
     )
     if shot_type == ProductImageCandidate.ShotType.DETAIL:
         shot_direction = (
-            "Create a product-only close-up using reference image 0 only for product-design fidelity. "
+            "Create a product-only ecommerce detail photograph of the item on a clean studio surface. "
+            "Use reference image 0 only for product-design fidelity; do not crop so tightly that the product becomes abstract. "
             f"Emphasize {DETAIL_DIRECTIONS[resolved.get('detailFocus', 'automatic')]}. "
+            "For accessories, show a natural close view of hardware, texture, strap, closure, edge finish, or construction. "
             "Recolor only to the assigned catalog color where applicable."
         )
         final_guardrails = DETAIL_FINAL_GUARDRAILS
