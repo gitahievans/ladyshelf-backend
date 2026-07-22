@@ -26,6 +26,7 @@ from admin_portal.image_generation.prompts import (
 from admin_portal.image_generation.services import (
     ImageGenerationWorkflowError,
     approve_candidate,
+    cancel_generation,
     create_batch,
     process_next_generation,
     publish_generation,
@@ -94,6 +95,7 @@ class FakeStorage:
         self.deleted: list[str] = []
         self.copied: list[tuple[str, str]] = []
         self.fail_copy_at: int | None = None
+        self.fail_delete = False
 
     def upload(self, path: str, content: bytes, *, content_type: str = "image/webp") -> str:
         if path in self.uploaded:
@@ -112,6 +114,8 @@ class FakeStorage:
         return f"https://project.supabase.co/storage/v1/object/public/product-images/{destination_path}"
 
     def delete(self, paths: list[str]) -> None:
+        if self.fail_delete:
+            raise ImageStorageError("storage_delete", "delete failed")
         self.deleted.extend(paths)
         for path in paths:
             self.uploaded.pop(path, None)
@@ -167,8 +171,14 @@ class PromptTests(TestCase):
             overrides["hero"]["resolved"]["identity"],
             overrides["alternate"]["resolved"]["identity"],
         )
+        alternate_prompt = build_prompt(snapshot, "alternate", overrides["alternate"])
+        self.assertIn("meaningfully different product angle", alternate_prompt)
+        self.assertIn("back view or rear three-quarter view", alternate_prompt)
+        self.assertIn("side profile or turned view", alternate_prompt)
         detail_prompt = build_prompt(snapshot, "detail", overrides["detail"])
         self.assertIn("product-only image", detail_prompt)
+        self.assertIn("clean studio surface", detail_prompt)
+        self.assertIn("For accessories", detail_prompt)
         self.assertIn("Show no person, face, hands, limbs", detail_prompt)
 
     def test_color_allocation_for_three_two_one_and_zero_colors(self):
@@ -243,6 +253,28 @@ class CloudflareClientTests(TestCase):
         with self.assertRaises(ImageProviderError) as raised:
             generate_image(prompt="Product", seed=4)
         self.assertEqual(raised.exception.code, "malformed_output")
+
+    @patch("admin_portal.image_generation.cloudflare.requests.post")
+    def test_provider_request_diagnostics_are_sanitized(self, post):
+        response = Mock(ok=False, status_code=422, text="unsafe raw response")
+        response.json.return_value = {
+            "errors": [
+                {
+                    "code": "invalid_request",
+                    "message": "Invalid image request\nAuthorization Bearer secret-token",
+                }
+            ],
+        }
+        post.return_value = response
+
+        with self.assertRaises(ImageProviderError) as raised:
+            generate_image(prompt="Product", seed=4)
+
+        self.assertEqual(raised.exception.code, "provider_configuration")
+        self.assertIn("HTTP 422", raised.exception.safe_message)
+        self.assertIn("invalid_request", raised.exception.safe_message)
+        self.assertNotIn("secret-token", raised.exception.safe_message)
+        self.assertNotIn("Bearer", raised.exception.safe_message)
 
     def test_image_validation_and_reference_dimensions(self):
         webp = prepare_candidate_image(image_bytes())
@@ -498,6 +530,160 @@ class GenerationWorkflowTests(TestCase):
         restore_previous_gallery(generation_id=generation.pk)
         product.refresh_from_db()
         self.assertEqual(product.images, old_images)
+
+    def test_reject_initializes_default_storage_and_succeeds(self):
+        batch = self.make_batch()
+        generation = batch.generations.get()
+        self.generate_ready(generation)
+        detail = generation.candidates.get(shot_type="detail")
+        draft = detail.storage_path
+
+        with patch(
+            "admin_portal.image_generation.services.SupabaseImageStorage",
+            return_value=self.storage,
+        ):
+            reject_candidate(candidate_id=detail.pk, reviewer=self.owner)
+
+        detail.refresh_from_db()
+        generation.refresh_from_db()
+        self.assertIn(draft, self.storage.deleted)
+        self.assertEqual(detail.status, ProductImageCandidate.Status.REJECTED)
+        self.assertEqual(detail.storage_path, "")
+        self.assertEqual(detail.public_url, "")
+        self.assertEqual(generation.status, ProductImageGeneration.Status.NEEDS_REGENERATION)
+
+    def test_reject_cleanup_failure_keeps_cleanup_needed_state(self):
+        batch = self.make_batch()
+        generation = batch.generations.get()
+        self.generate_ready(generation)
+        detail = generation.candidates.get(shot_type="detail")
+        draft = detail.storage_path
+        public_url = detail.public_url
+        self.storage.fail_delete = True
+
+        reject_candidate(candidate_id=detail.pk, reviewer=self.owner, storage=self.storage)
+
+        detail.refresh_from_db()
+        generation.refresh_from_db()
+        self.assertEqual(detail.status, ProductImageCandidate.Status.REJECTED)
+        self.assertEqual(detail.storage_path, draft)
+        self.assertEqual(detail.public_url, public_url)
+        self.assertEqual(detail.last_error_code, "cleanup_needed")
+        self.assertEqual(generation.status, ProductImageGeneration.Status.NEEDS_REGENERATION)
+
+    def test_reject_does_not_change_generating_or_published_work(self):
+        batch = self.make_batch()
+        generation = batch.generations.get()
+        self.generate_ready(generation)
+        detail = generation.candidates.get(shot_type="detail")
+        generation.status = ProductImageGeneration.Status.GENERATING
+        generation.save(update_fields=["status", "updated_at"])
+        with self.assertRaises(ImageGenerationWorkflowError):
+            reject_candidate(candidate_id=detail.pk, reviewer=self.owner, storage=self.storage)
+
+        generation.status = ProductImageGeneration.Status.READY_FOR_REVIEW
+        generation.save(update_fields=["status", "updated_at"])
+        for candidate in generation.candidates.all():
+            approve_candidate(candidate_id=candidate.pk, reviewer=self.owner)
+        publish_generation(
+            generation_id=generation.pk,
+            publication_mode=ProductImageGeneration.PublicationMode.APPEND,
+            storage=self.storage,
+        )
+        detail.refresh_from_db()
+        with self.assertRaises(ImageGenerationWorkflowError):
+            reject_candidate(candidate_id=detail.pk, reviewer=self.owner, storage=self.storage)
+
+    def test_cancel_queued_generation_recomputes_batch(self):
+        batch = self.make_batch()
+        generation = batch.generations.get()
+
+        cancelled = cancel_generation(generation_id=generation.pk, storage=self.storage)
+
+        batch.refresh_from_db()
+        self.assertEqual(cancelled.status, ProductImageGeneration.Status.CANCELLED)
+        self.assertEqual(batch.status, ImageGenerationBatch.Status.CANCELLED)
+        self.assertFalse(cancelled.candidates.exclude(status=ProductImageCandidate.Status.REJECTED).exists())
+
+    def test_cancel_ready_generation_deletes_only_drafts_and_keeps_gallery(self):
+        batch = self.make_batch()
+        generation = batch.generations.get()
+        product = generation.product
+        old_images = list(product.images)
+        self.generate_ready(generation)
+        drafts = {
+            candidate.storage_path
+            for candidate in generation.candidates.all()
+        }
+
+        cancelled = cancel_generation(generation_id=generation.pk, storage=self.storage)
+
+        product.refresh_from_db()
+        batch.refresh_from_db()
+        self.assertEqual(cancelled.status, ProductImageGeneration.Status.CANCELLED)
+        self.assertEqual(product.images, old_images)
+        self.assertEqual(set(self.storage.deleted), drafts)
+        self.assertTrue(all(path.startswith("ai-drafts/") for path in drafts))
+        self.assertEqual(batch.status, ImageGenerationBatch.Status.CANCELLED)
+        self.assertFalse(cancelled.candidates.exclude(storage_path="").exists())
+        self.assertFalse(cancelled.candidates.exclude(public_url="").exists())
+
+    def test_cancel_approved_generation_and_cleanup_failure_are_safe(self):
+        batch = self.make_batch()
+        generation = batch.generations.get()
+        self.approve_generation(generation)
+        draft = generation.candidates.first().storage_path
+        self.storage.fail_delete = True
+
+        cancelled = cancel_generation(generation_id=generation.pk, storage=self.storage)
+
+        cancelled.refresh_from_db()
+        self.assertEqual(cancelled.status, ProductImageGeneration.Status.CANCELLED)
+        self.assertEqual(cancelled.last_error_code, "cleanup_needed")
+        self.assertTrue(cancelled.candidates.filter(storage_path=draft, last_error_code="cleanup_needed").exists())
+
+    def test_cancel_failed_generation(self):
+        batch = self.make_batch()
+        generation = batch.generations.get()
+        generation.status = ProductImageGeneration.Status.FAILED
+        generation.last_error_code = "provider_configuration"
+        generation.last_error_message = "The configured image model or request is invalid."
+        generation.save(update_fields=["status", "last_error_code", "last_error_message", "updated_at"])
+
+        cancelled = cancel_generation(generation_id=generation.pk, storage=self.storage)
+
+        self.assertEqual(cancelled.status, ProductImageGeneration.Status.CANCELLED)
+        self.assertEqual(cancelled.last_error_code, "")
+
+    def test_cancel_rejects_generating_published_and_already_cancelled(self):
+        batch = self.make_batch()
+        generation = batch.generations.get()
+        for generation_status, code in [
+            (ProductImageGeneration.Status.GENERATING, "generation_in_progress"),
+            (ProductImageGeneration.Status.PUBLISHED, "already_published"),
+            (ProductImageGeneration.Status.CANCELLED, "already_cancelled"),
+        ]:
+            with self.subTest(status=generation_status):
+                generation.status = generation_status
+                generation.save(update_fields=["status", "updated_at"])
+                with self.assertRaises(ImageGenerationWorkflowError) as raised:
+                    cancel_generation(generation_id=generation.pk, storage=self.storage)
+                self.assertEqual(raised.exception.code, code)
+
+    def test_cancel_api_is_owner_only(self):
+        batch = self.make_batch()
+        generation = batch.generations.get()
+        path = f"/api/v1/admin/image-generations/{generation.pk}/cancel"
+
+        self.client.force_authenticate(user=self.attendant)
+        denied = self.client.post(path)
+        self.assertEqual(denied.status_code, 403)
+
+        self.client.force_authenticate(user=self.owner)
+        response = self.client.post(path)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["status"], "cancelled")
 
     def test_failed_publish_keeps_live_gallery_and_cleans_final_copies(self):
         batch = self.make_batch()

@@ -4,9 +4,9 @@ Last updated: 2026-07-22 (Africa/Nairobi)
 
 ## Resume point
 
-**Current state:** LadyShelf is deployed. PostgreSQL 16.14 and the corrected Gunicorn backend are healthy; Django is bound only to `127.0.0.1:8000`, PostgreSQL has no host port, and Nginx proxies `https://api.ladyshelf.site` through Cloudflare. The deployed source revision is `5273eecab837c561de800ed3fb2f04ba2bb5a74d`, using `registry.ladyshelf.site/ladyshelf/backend@sha256:57bc9291f151d6212cda66e97ad6bb0da39fccbb54a46c25c04ecc5cc6c8ed35`. The first superuser exists, and the five-minute unpaid-prepay order-expiry timer is enabled and active.
+**Current state:** LadyShelf is deployed. PostgreSQL 16.14 and the AI product-image backend are healthy; Django is bound only to `127.0.0.1:8000`, PostgreSQL has no host port, and Nginx proxies `https://api.ladyshelf.site` through Cloudflare. The deployed source revision is `6e333f815b503e194a770ac50335f52692a622ec`, using `registry.ladyshelf.site/ladyshelf/backend@sha256:a0024968043f872f5becec0363dd031f25a1f6ea5d85cb29b699f448ca6c63e0`. The first superuser exists. The five-minute unpaid-prepay order-expiry timer and the two-minute AI product-image timer are enabled and active.
 
-**Next milestone:** backend work is intentionally paused while the frontend domain is connected to Vercel in a separate workstream. Keep Namecheap as registrar and Cloudflare as authoritative DNS; do not replace Cloudflare's nameservers with Vercel's. Point only the frontend apex/`www` records to the exact targets shown by Vercel, using Cloudflare DNS-only records, while preserving the proxied `api` and `registry` records. When backend work resumes, fix Supabase token verification and continue the remaining post-deployment and deferred Harbor operations below. Read `AGENTS.md` and `deploy/README.md` before acting in this repository.
+**Next milestone:** complete owner-facing browser verification of the deployed `/admin/catalog` AI workflow and the production frontend deployment if not already verified through Vercel. Keep Namecheap as registrar and Cloudflare as authoritative DNS; do not replace Cloudflare's nameservers with Vercel's. Preserve the proxied `api` and `registry` records. Fix Supabase token verification in a separate workstream, and continue the remaining post-deployment and deferred Harbor operations below. Read `AGENTS.md` and `deploy/README.md` before acting in this repository.
 
 ## Infrastructure completed
 
@@ -104,6 +104,21 @@ Operational runbook: [`docs/harbor.md`](harbor.md).
 - Final infrastructure audit found the backend and PostgreSQL containers healthy, Django published only on `127.0.0.1:8000`, PostgreSQL with only its internal container port and no host listener, and the order-expiry timer enabled/active.
 - Fixed Django admin login CSRF failures caused by the API Nginx site sending `Referrer-Policy: no-referrer`. Browser POSTs consequently arrived at Django with `Origin: null` and were correctly rejected. Changed only the API site's policy to `same-origin`; `nginx -t` passed and Nginx reloaded successfully without restarting the application or database. A controlled public Cloudflare round trip fetched a fresh CSRF token and submitted dummy credentials: GET and POST both returned HTTP 200, and Django reached normal credential validation rather than CSRF rejection. Rollback copy: `/etc/nginx/sites-available/api.ladyshelf.site.pre-referrer-policy-20260718T080301Z`.
 
+## AI product-image review workflow follow-up
+
+- Follow-up backend fixes were committed and pushed on `feature/ai-product-images` as `a7851a124b94642ba79a74df07bb7d9599890b57` (`Fix AI image review cancellation workflow`).
+- The follow-up fixes initialize default Supabase storage for candidate rejection, make reject cleanup best-effort with cleanup-needed state, add owner-only `POST /api/v1/admin/image-generations/{generation_id}/cancel`, cancel queued/ready/needs-regeneration/approved/failed generation work without changing live product galleries, delete only draft `ai-drafts/` objects best-effort, recompute batch status, and add sanitized Cloudflare 400/422 diagnostics plus softened Detail prompts.
+- Local verification before deployment: `docker compose run --rm backend python manage.py test admin_portal.test_image_generation` passed with 40 tests; `docker compose run --rm backend python manage.py makemigrations --check` reported no changes; `docker compose run --rm backend python manage.py check` reported no issues.
+- A production image was built on the VM from a Git archive of exact commit `a7851a124b94642ba79a74df07bb7d9599890b57`, collected 157 static files with 751 post-processing operations, and was pushed to Harbor as `registry.ladyshelf.site/ladyshelf/backend:a7851a124b94642ba79a74df07bb7d9599890b57`.
+- Published and deployed immutable digest: `registry.ladyshelf.site/ladyshelf/backend@sha256:59e54363e4a63e0c1e0046871507b9be6936ce81ec82e5640f44b5436ed91021`. OCI revision label matches `a7851a124b94642ba79a74df07bb7d9599890b57`.
+- Environment rollback copy before the follow-up deployment: `/opt/ladyshelf/secrets/backend.env.pre-ai-review-fix-20260722T203221Z`.
+- `/opt/ladyshelf/scripts/release.sh` completed successfully. No migrations were pending; `bootstrap_admin_roles` synced Owner with 48 permissions and Attendant with 14. Backend was recreated only; PostgreSQL remained healthy.
+- Post-deployment verification found `ladyshelf-backend-1` running healthy on loopback `127.0.0.1:8000`, public `https://api.ladyshelf.site/api/v1/health` returned `{"status":"ok","service":"wahi-fashion-backend","version":"0.1.0"}`, and both `ladyshelf-product-images.timer` and `ladyshelf-expire-orders.timer` remained active.
+- No production database backup was created for this follow-up because there were no model or migration changes. No production AI generation, Supabase storage cleanup, product gallery changes, DNS, Nginx, firewall, or frontend deployment changes were made as part of this follow-up.
+- Prompt-only follow-up commit `6e333f815b503e194a770ac50335f52692a622ec` (`Improve alternate image wearing angle prompt`) now directs Alternate shots to show the item worn from a meaningfully different product angle, prioritizing back or rear three-quarter views and otherwise side/turned views that reveal fit, drape, strap placement, closure, hem, and silhouette details. Targeted image-generation tests passed with 40 tests.
+- The prompt-only image was built on the VM from an exact source archive, pushed to Harbor as `registry.ladyshelf.site/ladyshelf/backend:6e333f815b503e194a770ac50335f52692a622ec`, and deployed as `registry.ladyshelf.site/ladyshelf/backend@sha256:a0024968043f872f5becec0363dd031f25a1f6ea5d85cb29b699f448ca6c63e0`. OCI revision label matches `6e333f815b503e194a770ac50335f52692a622ec`.
+- Environment rollback copy before the prompt-only deployment: `/opt/ladyshelf/secrets/backend.env.pre-alternate-angle-prompt-20260722T205312Z`. No migrations were pending; production health returned OK and both timers remained active.
+
 ## Frontend handoff decision
 
 - Backend work was intentionally paused after the production admin login and email-delivery validations passed. The next workstream is connecting the Vercel-hosted frontend to `ladyshelf.site`.
@@ -129,30 +144,16 @@ Operational runbook: [`docs/harbor.md`](harbor.md).
 ## Repository state
 
 - The user confirmed that all previously dirty application changes were intended for this release.
-- Those changes and the deployment work are committed and pushed to `main`; the currently deployed source commit is `5273eecab837c561de800ed3fb2f04ba2bb5a74d`.
+- The currently deployed backend source commit is `a7851a124b94642ba79a74df07bb7d9599890b57` from `feature/ai-product-images`. The deployment uses the immutable Harbor digest `registry.ladyshelf.site/ladyshelf/backend@sha256:59e54363e4a63e0c1e0046871507b9be6936ce81ec82e5640f44b5436ed91021`.
 - Continue to inspect `git status` and targeted diffs before future edits; do not absorb new unrelated changes into deployment commits.
 
 ## Pending plan
 
-### AI product-image feature branch (not deployed)
+### AI product-image rollout follow-up
 
-- The `feature/ai-product-images` implementation adds unpublished product drafts, owner-reviewed
-  Cloudflare Workers AI candidates, Supabase draft/final paths, and a two-minute worker timer artifact.
-- No production credentials were configured, no provider calls were made, no production migration
-  was applied, and `ladyshelf-product-images.timer` remains absent/disabled in production.
-- A future approved release must back up PostgreSQL, configure protected backend variables, apply
-  migrations, deploy both feature branches, and validate one noncritical draft before timer activation.
-- The local feature branch now includes the additive controlled-variety/manual-regeneration extension:
-  candidate prompt-policy/revision/override audit fields, v2 prompt allocation, server-side guarded
-  controls, and scoped regeneration. This extension has not been migrated, deployed, or exercised
-  against real Cloudflare or Supabase services.
-- The local feature branch also includes the mixed-gallery publication extension. Publication now
-  requires an audited `append` or `replace` mode, snapshots the locked product gallery immediately
-  before publication, preserves variant image assignments in append mode, clears only removed URL
-  assignments in replace mode, and supports exact empty or populated gallery rollback. Historical
-  published generations are backfilled as `replace`; unpublished generations remain without a mode
-  until publication. This migration has been tested only in the local PostgreSQL test database and
-  has not been applied to the local development database or production.
+- Owner browser verification of the production `/admin/catalog` AI image workflow remains required on desktop and mobile.
+- The generated smoke products, generation records, and storage objects remain in production for audit. Cleanup is optional and requires a separately defined cleanup operation.
+- Frontend production deployment and Vercel state should be verified separately if not already confirmed from the GitHub merge.
 
 ### 1. Post-deployment operations
 

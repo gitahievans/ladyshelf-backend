@@ -383,17 +383,27 @@ def reject_candidate(
     candidate = ProductImageCandidate.objects.select_related("generation").get(pk=candidate_id)
     if candidate.status == ProductImageCandidate.Status.REJECTED:
         return candidate
+    if candidate.generation.status in {
+        ProductImageGeneration.Status.GENERATING,
+        ProductImageGeneration.Status.PUBLISHED,
+        ProductImageGeneration.Status.CANCELLED,
+    }:
+        raise ImageGenerationWorkflowError(
+            "invalid_candidate_state",
+            "This image-generation work cannot be changed.",
+        )
     if candidate.status not in {ProductImageCandidate.Status.READY, ProductImageCandidate.Status.APPROVED}:
         raise ImageGenerationWorkflowError("invalid_candidate_state", "Only a generated candidate can be rejected.")
     cleanup_error = None
-    try:
-        storage.delete([candidate.storage_path])
-    except ImageStorageError as error:
-        cleanup_error = error
+    if candidate.storage_path:
+        try:
+            storage = storage or SupabaseImageStorage()
+            storage.delete([candidate.storage_path])
+        except ImageStorageError as error:
+            cleanup_error = error
     with transaction.atomic():
         candidate = ProductImageCandidate.objects.select_for_update().select_related("generation").get(pk=candidate_id)
         candidate.status = ProductImageCandidate.Status.REJECTED
-        candidate.public_url = ""
         candidate.reviewed_by = reviewer
         candidate.reviewed_at = timezone.now()
         candidate.last_error_code = "cleanup_needed" if cleanup_error else ""
@@ -402,12 +412,118 @@ def reject_candidate(
         )
         if cleanup_error is None:
             candidate.storage_path = ""
+            candidate.public_url = ""
         candidate.save()
         generation = candidate.generation
         generation.status = ProductImageGeneration.Status.NEEDS_REGENERATION
         generation.save(update_fields=["status", "updated_at"])
         recompute_batch(generation.batch_id)
     return candidate
+
+
+def cancel_generation(
+    *, generation_id: object, storage: SupabaseImageStorage | None = None
+) -> ProductImageGeneration:
+    generation = (
+        ProductImageGeneration.objects.select_related("product")
+        .prefetch_related("candidates")
+        .get(pk=generation_id)
+    )
+    if generation.status == ProductImageGeneration.Status.CANCELLED:
+        raise ImageGenerationWorkflowError(
+            "already_cancelled",
+            "This image-generation work has already been cancelled.",
+        )
+    if generation.status == ProductImageGeneration.Status.GENERATING:
+        raise ImageGenerationWorkflowError(
+            "generation_in_progress",
+            "Image generation is already in progress. Wait for this worker run to finish before cancelling.",
+        )
+    if generation.status == ProductImageGeneration.Status.PUBLISHED:
+        raise ImageGenerationWorkflowError(
+            "already_published",
+            "Published generated galleries cannot be removed from the active workspace.",
+        )
+    allowed_statuses = {
+        ProductImageGeneration.Status.QUEUED,
+        ProductImageGeneration.Status.READY_FOR_REVIEW,
+        ProductImageGeneration.Status.NEEDS_REGENERATION,
+        ProductImageGeneration.Status.APPROVED,
+        ProductImageGeneration.Status.FAILED,
+    }
+    if generation.status not in allowed_statuses:
+        raise ImageGenerationWorkflowError(
+            "invalid_generation_state",
+            "This image-generation work cannot be cancelled.",
+        )
+
+    candidates = list(generation.candidates.all())
+    draft_paths = [
+        candidate.storage_path
+        for candidate in candidates
+        if candidate.storage_path.startswith("ai-drafts/")
+    ]
+    cleanup_error = None
+    if draft_paths:
+        try:
+            storage = storage or SupabaseImageStorage()
+            storage.delete(draft_paths)
+        except ImageStorageError as error:
+            cleanup_error = error
+
+    batch_id = generation.batch_id
+    with transaction.atomic():
+        generation = ProductImageGeneration.objects.select_for_update().get(pk=generation_id)
+        if generation.status in {
+            ProductImageGeneration.Status.CANCELLED,
+            ProductImageGeneration.Status.GENERATING,
+            ProductImageGeneration.Status.PUBLISHED,
+        }:
+            raise ImageGenerationWorkflowError(
+                "invalid_generation_state",
+                "This image-generation work cannot be cancelled.",
+            )
+        locked_candidates = list(generation.candidates.select_for_update().all())
+        deleted_paths = set(draft_paths) if cleanup_error is None else set()
+        for candidate in locked_candidates:
+            has_draft = candidate.storage_path.startswith("ai-drafts/")
+            if candidate.status in {
+                ProductImageCandidate.Status.QUEUED,
+                ProductImageCandidate.Status.GENERATING,
+                ProductImageCandidate.Status.READY,
+                ProductImageCandidate.Status.APPROVED,
+            }:
+                candidate.status = ProductImageCandidate.Status.REJECTED
+            if has_draft and candidate.storage_path in deleted_paths:
+                candidate.storage_path = ""
+                candidate.public_url = ""
+            if cleanup_error and has_draft:
+                candidate.last_error_code = "cleanup_needed"
+                candidate.last_error_message = "The cancelled draft still needs storage cleanup."
+            else:
+                candidate.last_error_code = ""
+                candidate.last_error_message = ""
+            candidate.save()
+        generation.status = ProductImageGeneration.Status.CANCELLED
+        generation.next_attempt_at = None
+        generation.completed_at = timezone.now()
+        generation.last_error_code = "cleanup_needed" if cleanup_error else ""
+        generation.last_error_message = (
+            "One or more cancelled drafts still need storage cleanup." if cleanup_error else ""
+        )
+        generation.save(
+            update_fields=[
+                "status",
+                "next_attempt_at",
+                "completed_at",
+                "last_error_code",
+                "last_error_message",
+                "updated_at",
+            ]
+        )
+        batch_id = generation.batch_id
+    recompute_batch(batch_id)
+    return ProductImageGeneration.objects.select_related("product").prefetch_related("candidates").get(pk=generation_id)
 
 
 def regenerate_candidate(

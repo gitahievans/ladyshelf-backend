@@ -50,6 +50,7 @@ from admin_portal.serializers import (
 from admin_portal.image_generation.services import (
     ImageGenerationWorkflowError,
     approve_candidate,
+    cancel_generation,
     create_batch,
     publish_generation,
     recompute_batch,
@@ -670,7 +671,15 @@ def image_generation_queryset():
 
 
 def workflow_error_response(error: ImageGenerationWorkflowError) -> Response:
-    conflict_codes = {"active_generation", "invalid_candidate_state", "incomplete_approval"}
+    conflict_codes = {
+        "active_generation",
+        "already_cancelled",
+        "already_published",
+        "generation_in_progress",
+        "invalid_candidate_state",
+        "invalid_generation_state",
+        "incomplete_approval",
+    }
     return Response(
         {"detail": error.safe_message, "code": error.code},
         status=(
@@ -814,6 +823,19 @@ class GenerationPublishView(APIView):
             return workflow_error_response(error)
         except ImageStorageError as error:
             return storage_error_response(error)
+        generation = ProductImageGeneration.objects.select_related("product").prefetch_related("candidates").get(pk=generation.pk)
+        return Response(ProductImageGenerationSerializer(generation).data)
+
+
+class GenerationCancelView(APIView):
+    permission_classes = [IsAuthenticated, IsAdminOwner]
+    throttle_scope = "admin"
+
+    def post(self, request, generation_id):
+        try:
+            generation = cancel_generation(generation_id=generation_id)
+        except ImageGenerationWorkflowError as error:
+            return workflow_error_response(error)
         generation = ProductImageGeneration.objects.select_related("product").prefetch_related("candidates").get(pk=generation.pk)
         return Response(ProductImageGenerationSerializer(generation).data)
 
