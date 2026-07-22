@@ -87,8 +87,18 @@ class SupabaseImageStorage:
             raise ImageStorageError("storage_delete", "The generated image could not be removed from storage.")
 
 
-def draft_path(*, batch_id: object, product_slug: str, shot_type: str, candidate_id: object) -> str:
-    return f"ai-drafts/{batch_id}/{product_slug}/{shot_type}-{candidate_id}.webp"
+def draft_path(
+    *,
+    batch_id: object,
+    product_slug: str,
+    shot_type: str,
+    candidate_id: object,
+    revision: int,
+) -> str:
+    return (
+        f"ai-drafts/{batch_id}/{product_slug}/"
+        f"{shot_type}-{candidate_id}-r{revision}.webp"
+    )
 
 
 def published_path(*, generation_id: object, product_slug: str, shot_type: str) -> str:

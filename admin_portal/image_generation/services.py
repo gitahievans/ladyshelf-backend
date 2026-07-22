@@ -308,6 +308,7 @@ def process_next_generation(*, storage: SupabaseImageStorage | None = None) -> b
                 product_slug=generation.source_snapshot["slug"],
                 shot_type=shot_type,
                 candidate_id=candidate.pk,
+                revision=candidate.regeneration_revision,
             )
             public_url = storage.upload(path, webp_bytes)
         except (ImageProviderError, ImageStorageError) as error:

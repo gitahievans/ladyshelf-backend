@@ -87,6 +87,9 @@ Run this on a schedule before launch. The command cancels expired unpaid prepay 
   is absent from the generation's frozen catalog snapshot.
 - Explicit regeneration increments the candidate revision and seed. Worker retries must preserve the
   stored prompt and seed so transient failures remain reproducible.
+- Draft object paths and admin preview URLs include the regeneration revision. Treat draft URLs as
+  immutable so Supabase, Next.js, and browser caches cannot display a previous revision after the
+  candidate status has returned to ready.
 - Publish copies all three approved objects to final paths before atomically replacing the gallery.
   Use `Restore previous gallery` in the admin review UI for rollback.
 

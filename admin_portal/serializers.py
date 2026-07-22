@@ -678,7 +678,8 @@ class ProductImageCandidateSerializer(serializers.ModelSerializer):
             ProductImageCandidate.Status.READY,
             ProductImageCandidate.Status.APPROVED,
         }:
-            return obj.public_url
+            separator = "&" if "?" in obj.public_url else "?"
+            return f"{obj.public_url}{separator}v={obj.regeneration_revision}"
         return ""
 
 

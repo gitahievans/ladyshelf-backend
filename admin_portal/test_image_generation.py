@@ -43,6 +43,7 @@ from admin_portal.models import (
     ProductImageCandidate,
     ProductImageGeneration,
 )
+from admin_portal.serializers import ProductImageCandidateSerializer
 from catalog.models import Product
 from customers.models import CustomerProfile
 
@@ -263,14 +264,20 @@ class StorageTests(TestCase):
         session.post.return_value = Mock(ok=True, status_code=200, text="")
         session.delete.return_value = Mock(ok=True, status_code=200, text="")
         storage = SupabaseImageStorage(session=session)
-        draft = draft_path(batch_id="batch", product_slug="dress", shot_type="hero", candidate_id="candidate")
+        draft = draft_path(
+            batch_id="batch",
+            product_slug="dress",
+            shot_type="hero",
+            candidate_id="candidate",
+            revision=3,
+        )
         final = published_path(generation_id="generation", product_slug="dress", shot_type="hero")
 
         url = storage.upload(draft, b"image")
         final_url = storage.copy(draft, final)
         storage.delete([draft])
 
-        self.assertIn("ai-drafts/batch/dress/hero-candidate.webp", url)
+        self.assertIn("ai-drafts/batch/dress/hero-candidate-r3.webp", url)
         self.assertIn("products/dress/ai-generated/generation/hero.webp", final_url)
         self.assertEqual(session.post.call_args_list[0].kwargs["headers"]["x-upsert"], "false")
         self.assertNotIn("service-key", str(ImageStorageError("storage_upload", "safe")))
@@ -501,6 +508,35 @@ class GenerationWorkflowTests(TestCase):
         self.assertEqual(alternate.seed, retry_seed)
         self.assertEqual(alternate.prompt, retry_prompt)
         self.assertEqual(alternate.regeneration_revision, 1)
+
+    def test_regeneration_uses_revisioned_storage_and_preview_urls(self):
+        generation = self.make_batch().generations.get()
+        self.generate_ready(generation)
+        alternate = generation.candidates.get(shot_type="alternate")
+        initial_path = alternate.storage_path
+        initial_preview = ProductImageCandidateSerializer(alternate).data["publicUrl"]
+
+        self.assertTrue(initial_path.endswith("-r0.webp"))
+        self.assertTrue(initial_preview.endswith("?v=0"))
+
+        regenerate_candidate(
+            candidate_id=alternate.pk,
+            scope="shot",
+            shots={"alternate": model_shot(composition="seated")},
+            storage=self.storage,
+        )
+        with patch(
+            "admin_portal.image_generation.services.generate_image",
+            return_value=image_bytes(),
+        ):
+            process_next_generation(storage=self.storage)
+        alternate.refresh_from_db()
+        regenerated_preview = ProductImageCandidateSerializer(alternate).data["publicUrl"]
+
+        self.assertNotEqual(alternate.storage_path, initial_path)
+        self.assertTrue(alternate.storage_path.endswith("-r1.webp"))
+        self.assertTrue(regenerated_preview.endswith("?v=1"))
+        self.assertIn(initial_path, self.storage.deleted)
 
     def test_isolated_regeneration_leaves_other_candidates_unchanged(self):
         generation = self.make_batch().generations.get()
