@@ -4,9 +4,9 @@ Last updated: 2026-07-22 (Africa/Nairobi)
 
 ## Resume point
 
-**Current state:** LadyShelf is deployed. PostgreSQL 16.14 and the corrected Gunicorn backend are healthy; Django is bound only to `127.0.0.1:8000`, PostgreSQL has no host port, and Nginx proxies `https://api.ladyshelf.site` through Cloudflare. The deployed source revision is `5273eecab837c561de800ed3fb2f04ba2bb5a74d`, using `registry.ladyshelf.site/ladyshelf/backend@sha256:57bc9291f151d6212cda66e97ad6bb0da39fccbb54a46c25c04ecc5cc6c8ed35`. The first superuser exists, and the five-minute unpaid-prepay order-expiry timer is enabled and active.
+**Current state:** LadyShelf is deployed. PostgreSQL 16.14 and the AI product-image backend are healthy; Django is bound only to `127.0.0.1:8000`, PostgreSQL has no host port, and Nginx proxies `https://api.ladyshelf.site` through Cloudflare. The deployed source revision is `2a0f00aa7dc0f0623469ec34f76bfee53c267c4a`, using `registry.ladyshelf.site/ladyshelf/backend@sha256:5ba168d99fbbe546eb7d477c7b31f71a4065455b1a8cf115b0bd39f58af4e2b8`. The first superuser exists. The five-minute unpaid-prepay order-expiry timer and the two-minute AI product-image timer are enabled and active.
 
-**Next milestone:** backend work is intentionally paused while the frontend domain is connected to Vercel in a separate workstream. Keep Namecheap as registrar and Cloudflare as authoritative DNS; do not replace Cloudflare's nameservers with Vercel's. Point only the frontend apex/`www` records to the exact targets shown by Vercel, using Cloudflare DNS-only records, while preserving the proxied `api` and `registry` records. When backend work resumes, fix Supabase token verification and continue the remaining post-deployment and deferred Harbor operations below. Read `AGENTS.md` and `deploy/README.md` before acting in this repository.
+**Next milestone:** complete owner-facing browser verification of the deployed `/admin/catalog` AI workflow and the production frontend deployment if not already verified through Vercel. Keep Namecheap as registrar and Cloudflare as authoritative DNS; do not replace Cloudflare's nameservers with Vercel's. Preserve the proxied `api` and `registry` records. Fix Supabase token verification in a separate workstream, and continue the remaining post-deployment and deferred Harbor operations below. Read `AGENTS.md` and `deploy/README.md` before acting in this repository.
 
 ## Infrastructure completed
 
@@ -104,6 +104,24 @@ Operational runbook: [`docs/harbor.md`](harbor.md).
 - Final infrastructure audit found the backend and PostgreSQL containers healthy, Django published only on `127.0.0.1:8000`, PostgreSQL with only its internal container port and no host listener, and the order-expiry timer enabled/active.
 - Fixed Django admin login CSRF failures caused by the API Nginx site sending `Referrer-Policy: no-referrer`. Browser POSTs consequently arrived at Django with `Origin: null` and were correctly rejected. Changed only the API site's policy to `same-origin`; `nginx -t` passed and Nginx reloaded successfully without restarting the application or database. A controlled public Cloudflare round trip fetched a fresh CSRF token and submitted dummy credentials: GET and POST both returned HTTP 200, and Django reached normal credential validation rather than CSRF rejection. Rollback copy: `/etc/nginx/sites-available/api.ladyshelf.site.pre-referrer-policy-20260718T080301Z`.
 
+## AI product-image production rollout milestone
+
+- Backend PR #1 was merged into `main` as `2a0f00aa7dc0f0623469ec34f76bfee53c267c4a`. Frontend PR #2 was merged into `main` as `63a501a`.
+- Harbor had stopped after reboot except for `harbor-log`; it was started with `/opt/harbor/docker-compose.yml` and became healthy. Harbor remained bound only to `127.0.0.1:8081`, and public `https://registry.ladyshelf.site/api/v2.0/ping` returned `Pong`.
+- Built the backend image from a Git archive of exact commit `2a0f00aa7dc0f0623469ec34f76bfee53c267c4a`. The image collected 157 static files with 751 post-processing operations, runs as user `app`, and has OCI revision label `2a0f00aa7dc0f0623469ec34f76bfee53c267c4a`.
+- Scan used checksum-verified Trivy v0.69.3 against a saved image archive. Result: 4 critical, 19 high, 59 medium, 67 low, and 28 unknown findings. No fixable critical/high findings were present. Fixable medium/low Python package findings existed for Django 6.0.4 and pip 25.0.1; the owner explicitly approved deployment with this documented exception.
+- Published and production-pull verified `registry.ladyshelf.site/ladyshelf/backend@sha256:5ba168d99fbbe546eb7d477c7b31f71a4065455b1a8cf115b0bd39f58af4e2b8`.
+- Rollback backend image reference: `registry.ladyshelf.site/ladyshelf/backend@sha256:57bc9291f151d6212cda66e97ad6bb0da39fccbb54a46c25c04ecc5cc6c8ed35`.
+- Created and verified PostgreSQL backup `/opt/ladyshelf/backups/wahi-20260722T154608Z.dump`, mode `0600`, root-owned, size 104K, SHA-256 `1946c1c81a7ec3fb1c7252a2160eb9aa7cfb4cc912266f859ee4a08457f76d13`. `pg_restore --list` read 224 TOC entries from a custom-format PostgreSQL 16.14 dump. No off-VM backup was created during this rollout.
+- Applied migrations `catalog.0003_product_is_published`, `admin_portal.0002_image_generation`, `admin_portal.0003_candidate_prompt_audit`, and `admin_portal.0004_generation_publication_mode`, then ran `bootstrap_admin_roles`.
+- Production backend was deployed on the immutable digest above and verified healthy through `https://api.ladyshelf.site/api/v1/health`; public catalog returned HTTP 200. Django remained loopback-only on `127.0.0.1:8000`, PostgreSQL remained internal-only, and the backend container retained read-only root filesystem posture.
+- AI/Supabase configuration names were installed in `/opt/ladyshelf/secrets/backend.env` without printing values. Config rollback copies were created at `/opt/ladyshelf/secrets/backend.env.pre-ai-config-20260722T1555Z` and `/opt/ladyshelf/secrets/backend.env.pre-ai-enabled-20260722T1600Z`.
+- Installed `ladyshelf-product-images.service` and `ladyshelf-product-images.timer` from the deployed source. `systemd-analyze verify` returned only unrelated system package warnings. The timer was then enabled and active with `OnBootSec=2min`, `OnUnitActiveSec=2min`, and `Persistent=true`.
+- Controlled real Cloudflare Workers AI and Supabase storage smoke succeeded for two dedicated unpublished smoke products. One manual one-shot worker run processed one generation into three ready `ai-drafts` candidates. Append publication changed the smoke gallery count from 1 to 4 and rollback restored the exact prior one-image gallery. A timer-triggered run processed a second queued generation without a manual worker command; replace publication produced exactly three AI images and rollback restored the exact prior one-image gallery.
+- A subsequent timer run with no queued work exited successfully with `Processed 0 product image generation(s).` Final aggregate check found `active_generations=0` and `smoke_generations=2`.
+- Smoke-test database records and generated storage objects were intentionally retained for audit and rollback; no storage objects were deleted.
+- No unrelated product galleries, protected homepage media, DNS, Nginx, firewall, PostgreSQL exposure, SasaPay configuration, or unrelated services were changed.
+
 ## Frontend handoff decision
 
 - Backend work was intentionally paused after the production admin login and email-delivery validations passed. The next workstream is connecting the Vercel-hosted frontend to `ladyshelf.site`.
@@ -134,25 +152,11 @@ Operational runbook: [`docs/harbor.md`](harbor.md).
 
 ## Pending plan
 
-### AI product-image feature branch (not deployed)
+### AI product-image rollout follow-up
 
-- The `feature/ai-product-images` implementation adds unpublished product drafts, owner-reviewed
-  Cloudflare Workers AI candidates, Supabase draft/final paths, and a two-minute worker timer artifact.
-- No production credentials were configured, no provider calls were made, no production migration
-  was applied, and `ladyshelf-product-images.timer` remains absent/disabled in production.
-- A future approved release must back up PostgreSQL, configure protected backend variables, apply
-  migrations, deploy both feature branches, and validate one noncritical draft before timer activation.
-- The local feature branch now includes the additive controlled-variety/manual-regeneration extension:
-  candidate prompt-policy/revision/override audit fields, v2 prompt allocation, server-side guarded
-  controls, and scoped regeneration. This extension has not been migrated, deployed, or exercised
-  against real Cloudflare or Supabase services.
-- The local feature branch also includes the mixed-gallery publication extension. Publication now
-  requires an audited `append` or `replace` mode, snapshots the locked product gallery immediately
-  before publication, preserves variant image assignments in append mode, clears only removed URL
-  assignments in replace mode, and supports exact empty or populated gallery rollback. Historical
-  published generations are backfilled as `replace`; unpublished generations remain without a mode
-  until publication. This migration has been tested only in the local PostgreSQL test database and
-  has not been applied to the local development database or production.
+- The AI product-image backend is deployed and the production worker timer is enabled. The smoke test used backend services rather than an authenticated owner browser session, so a human owner still needs to verify the full `/admin/catalog` UI flow on desktop and mobile.
+- The generated smoke products, generation records, and storage objects remain in production for audit. Cleanup is optional and requires a separately defined cleanup operation.
+- Frontend production deployment and Vercel state should be verified separately if not already confirmed from the GitHub merge.
 
 ### 1. Post-deployment operations
 
