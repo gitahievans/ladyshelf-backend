@@ -266,7 +266,10 @@ def build_prompt(
             shot_direction = (
                 "Create an alternate catalog image using reference image 0 only for garment construction. "
                 "Show a clearly different person from Hero, with the assigned face, hair, skin tone, body profile, "
-                "pose, color, and framing. Preserve the product design exactly."
+                "pose, color, and framing. Show the item being worn from a meaningfully different product angle "
+                "than Hero, prioritizing a back view or rear three-quarter view when the product has visible back "
+                "construction; otherwise use a side profile or turned view that reveals fit, drape, strap placement, "
+                "closure, hem, and silhouette details not visible in the front hero. Preserve the product design exactly."
             )
         shot_direction = f"{shot_direction}\n{model_direction}"
         final_guardrails = FINAL_GUARDRAILS

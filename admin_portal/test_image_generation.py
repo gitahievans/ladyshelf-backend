@@ -171,6 +171,10 @@ class PromptTests(TestCase):
             overrides["hero"]["resolved"]["identity"],
             overrides["alternate"]["resolved"]["identity"],
         )
+        alternate_prompt = build_prompt(snapshot, "alternate", overrides["alternate"])
+        self.assertIn("meaningfully different product angle", alternate_prompt)
+        self.assertIn("back view or rear three-quarter view", alternate_prompt)
+        self.assertIn("side profile or turned view", alternate_prompt)
         detail_prompt = build_prompt(snapshot, "detail", overrides["detail"])
         self.assertIn("product-only image", detail_prompt)
         self.assertIn("clean studio surface", detail_prompt)
