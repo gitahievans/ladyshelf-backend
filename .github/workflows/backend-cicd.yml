@@ -1,0 +1,63 @@
+name: deploy-ladyshelf-backend
+on: 
+  push:
+    branches:
+      main
+# configure a job to run in a container not on the runner machine
+jobs:
+  containerized-ci-job:
+    runs-on: ubuntu-latest
+    steps:
+      # checkout step spins up a new runner machine for the job and the code is cloned in there for ci work
+      - name: Checkout repo code
+        uses: actions/checkout@v7
+      - name: Setup Python
+        uses: actions/setup-python@v7
+        with:
+            python-version: '3.12'
+            cache: 'pip'
+      - name: Install dependencies
+      # below, the setup-python action will search for requirements.txt in the whole repo
+        run: |
+           python -m pip install --upgrade pip
+           pip install -r requirements.txt  
+      - name: Run tests
+        run: python manage.py test
+        env:
+          DJANGO_DB_ENGINE: django.db.backends.postgresql
+          POSTGRES_DB: ladyshelf_test
+          POSTGRES_USER: ladyshelf
+          POSTGRES_PASSWORD: ci-test-password
+          POSTGRES_HOST: 127.0.0.1
+          POSTGRES_PORT: 5432
+      - name: Run migrations
+        run: |
+          python manage.py makemigrations --check
+          python manage.py check
+        env:
+          DJANGO_DB_ENGINE: django.db.backends.postgresql
+          POSTGRES_DB: ladyshelf_test
+          POSTGRES_USER: ladyshelf
+          POSTGRES_PASSWORD: ci-test-password
+          POSTGRES_HOST: localhost
+          POSTGRES_PORT: 5432    
+      - name: Build application
+        run: docker build -t registry.ladyshelf.site/ladyshelf/backend:${{github.sha}} .
+    
+
+    services:
+      # label used to access the service container; becomes the container hostname
+      postgres:
+        # docker hub container image
+        image: postgres:16.14-bookworm
+        env: 
+          POSTGRES_DB: ladyshelf_test
+          POSTGRES_USER: ladyshelf
+          POSTGRES_PASSWORD: ci-test-password
+        ports:
+          - 5432:5432
+        options:
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
