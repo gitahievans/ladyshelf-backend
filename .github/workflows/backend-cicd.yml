@@ -3,26 +3,53 @@ on:
   push:
     branches:
       main
-# configure a job to run in a container not on the runner machine
+
+# configure a ci job to run on the runner machine
 jobs:
   ci-job:
     runs-on: ubuntu-latest
     outputs:
       image_digest: ${{ steps.publish.outputs.digest }}
+      migrations_changed: ${{ steps.detect_migrations.outputs.changed }}
     steps:
       # checkout step spins up a new runner machine for the job and the code is cloned in there for ci work
       - name: Checkout repo code
         uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Detect migration changes
+        id: detect_migrations
+        env:
+          BEFORE_SHA: ${{ github.event.before }}
+          AFTER_SHA: ${{ github.sha }}
+        run: |
+          # If there is not previous commit to compare, take the safer path.
+          if [[ "$BEFORE_SHA" =~ ^0+$ ]]; then
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          changed_paths="$(git diff --no-renames --name-only "$BEFORE_SHA" "$AFTER_SHA")"
+
+          if printf '%s\n' "$changed_paths" | grep -Eq '(^|/)migrations/[^/]+\.py$'; then
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Setup Python
         uses: actions/setup-python@v7
         with:
             python-version: '3.12'
             cache: 'pip'
+
       - name: Install dependencies
       # below, the setup-python action will search for requirements.txt in the whole repo
         run: |
            python -m pip install --upgrade pip
            pip install -r requirements.txt  
+
       - name: Run tests
         run: python manage.py test
         env:
@@ -45,12 +72,14 @@ jobs:
           POSTGRES_PORT: 5432    
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
+
       - name: Login to Harbor registry
         uses: docker/login-action@v3
         with:
           registry: registry.ladyshelf.site
           username: ${{ secrets.HARBOR_USERNAME }}
           password: ${{ secrets.HARBOR_PASSWORD }}
+
       - name: Build and publish image
         id: publish
         uses: docker/build-push-action@v6
@@ -58,6 +87,7 @@ jobs:
           context: .
           push: true
           tags: registry.ladyshelf.site/ladyshelf/backend:${{ github.sha }}
+
       - name: Verify published image digest
         env:
           IMAGE: registry.ladyshelf.site/ladyshelf/backend
@@ -66,6 +96,29 @@ jobs:
           test -n "$DIGEST"
           docker buildx imagetools inspect "$IMAGE@$DIGEST"
 
+# deployment job
+  deploy:
+    needs: ci-job # ensures this job runs after the ci-job has completed successfully. here github creates a `needs` context object with the results and outputs of that dependency.
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repo code
+        uses: actions/checkout@v4
+        
+      - name: SSH
+        uses: appleboy/ssh-action@v1.0.3
+        env:
+          IMAGE_REF: registry.ladyshelf.site/ladyshelf/backend@${{ needs['ci-job'].outputs.image_digest }}
+          MIGRATION_FLAG: ${{ needs['ci-job'].outputs.migrations_changed }}
+        with:
+          host: ${{ secrets.PROD_SSH_HOST }}
+          username: ${{ secrets.PROD_SSH_USER }}
+          key: ${{ secrets.PROD_SSH_PRIVATE_KEY }}
+          port: 22
+          envs: IMAGE_REF,MIGRATION_FLAG
+          script: sudo -n -- /opt/ladyshelf/scripts/deploy-image.sh "$IMAGE_REF" "$MIGRATION_FLAG"
+
+# Postgresql Service Container setup
     services:
       # label used to access the service container; becomes the container hostname
       postgres:
