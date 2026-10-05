@@ -96,27 +96,6 @@ jobs:
           test -n "$DIGEST"
           docker buildx imagetools inspect "$IMAGE@$DIGEST"
 
-# deployment job
-  deploy:
-    needs: ci-job # ensures this job runs after the ci-job has completed successfully. here github creates a `needs` context object with the results and outputs of that dependency.
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout repo code
-        uses: actions/checkout@v4
-        
-      - name: SSH
-        uses: appleboy/ssh-action@v1.0.3
-        env:
-          IMAGE_REF: registry.ladyshelf.site/ladyshelf/backend@${{ needs['ci-job'].outputs.image_digest }}
-          MIGRATION_FLAG: ${{ needs['ci-job'].outputs.migrations_changed }}
-        with:
-          host: ${{ secrets.PROD_SSH_HOST }}
-          username: ${{ secrets.PROD_SSH_USER }}
-          key: ${{ secrets.PROD_SSH_PRIVATE_KEY }}
-          port: 22
-          envs: IMAGE_REF,MIGRATION_FLAG
-          script: sudo -n -- /opt/ladyshelf/scripts/deploy-image.sh "$IMAGE_REF" "$MIGRATION_FLAG"
 
 # Postgresql Service Container setup
     services:
@@ -135,3 +114,25 @@ jobs:
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
+
+# deployment job
+  deploy:
+    needs: ci-job # ensures this job runs after the ci-job has completed successfully. here github creates a `needs` context object with the results and outputs of that dependency.
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repo code
+        uses: actions/checkout@v4
+        
+      - name: SSH and deploy changes
+        uses: appleboy/ssh-action@v1.0.3
+        env:
+          IMAGE_REF: registry.ladyshelf.site/ladyshelf/backend@${{ needs['ci-job'].outputs.image_digest }}
+          MIGRATION_FLAG: ${{ needs['ci-job'].outputs.migrations_changed }}
+        with:
+          host: ${{ secrets.PROD_SSH_HOST }}
+          username: ${{ secrets.PROD_SSH_USER }}
+          key: ${{ secrets.PROD_SSH_PRIVATE_KEY }}
+          port: 22
+          envs: IMAGE_REF,MIGRATION_FLAG
+          script: sudo -n -- /opt/ladyshelf/scripts/deploy-image.sh "$IMAGE_REF" "$MIGRATION_FLAG"
