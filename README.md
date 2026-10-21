@@ -1,6 +1,6 @@
-# Wahi Fashion Backend
+# Ladyshelf Backend
 
-This directory contains the Django backend for Wahi Fashion.
+This directory contains the Django backend for Ladyshelf.
 
 ## Current scope
 
